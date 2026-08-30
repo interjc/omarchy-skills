@@ -24,7 +24,22 @@ All major project documentation (such as `README`, `CONTRIBUTING`, and architect
 
 ---
 
-## 🛠️ 2. Skill Directory Structure & Standards
+## 🤝 2. User Preference Confirmation Policy (用户意图与偏好确认原则)
+
+Configurations that involve subjective user habits (e.g., scrolling direction, hotkey mapping, layout styles, timeout durations) **must follow a strict confirmation-first process**:
+
+1. **Pre-Execution Confirmation**:
+   - AI agents must never assume subjective preferences without asking.
+   - Present available options clearly to the user, confirm their exact preferences, and only then proceed with modifying the configuration.
+2. **Interactive & Configurable Scripts**:
+   - Helper scripts (such as `scripts/setup.sh`) must support interactive prompts when run in a terminal to allow users to choose their preferred option.
+   - Scripts must also accept explicit CLI flags (e.g. `--traditional-scroll`, `--natural-scroll`) for non-interactive / CI automation.
+3. **Clear Documentation**:
+   - All `SKILL.md` and reference files must explain the alternatives and explicitly document how users can customize each setting.
+
+---
+
+## 🛠️ 3. Skill Directory Structure & Standards
 
 Each skill must follow a consistent modular structure under `skills/<skill-name>/`:
 
@@ -48,12 +63,12 @@ skills/<skill-name>/
 - Clear, structured sections explaining:
   - Background & Architecture rationale.
   - Quick Start (automated script if applicable).
-  - Manual step-by-step instructions.
+  - Manual step-by-step instructions with all configurable options.
   - Verification & testing commands.
 
 ---
 
-## ⚙️ 3. Omarchy Engineering Principles
+## ⚙️ 4. Omarchy Engineering Principles
 
 When designing skills for Omarchy Linux:
 1. **Non-Destructive Integration (无侵入性原则)**:
@@ -66,7 +81,7 @@ When designing skills for Omarchy Linux:
 
 ---
 
-## 📦 4. Distribution & Installation
+## 📦 5. Distribution & Installation
 
 Always recommend the standard skills CLI:
 ```bash

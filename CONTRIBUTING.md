@@ -105,7 +105,9 @@ When writing skills and scripts for Omarchy Linux, adhere to these core principl
      - Background Services: `~/.config/systemd/user/`
 2. **Idempotency**:
    - Automation scripts should be safe to run multiple times without causing side effects or corrupting existing configurations.
-3. **Safety & Transparency**:
+3. **Confirmation-First for User Preferences**:
+   - For subjective preferences (e.g. scrolling direction, hotkey bindings, UI themes, timeouts), agents and contributors must always confirm the user's specific requirements before modifying configurations, and provide interactive selection or CLI flags in scripts.
+4. **Safety & Transparency**:
    - Do not silently overwrite existing user configs without checking or providing user notice.
 
 ---
