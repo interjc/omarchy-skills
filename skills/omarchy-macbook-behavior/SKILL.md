@@ -69,8 +69,10 @@ hl.config({
       -- Palm rejection: Disable trackpad while typing on keyboard
       disable_while_typing = true,
 
-      -- macOS-style natural scrolling direction
-      natural_scroll = true,
+      -- Scrolling direction:
+      -- natural_scroll = false (Traditional: 2 fingers swipe UP moves page UP)
+      -- natural_scroll = true  (Natural: 2 fingers swipe UP moves page DOWN)
+      natural_scroll = false,
 
       -- Left-click-and-drag with three fingers (macOS Accessibility style)
       drag_3fg = 1,

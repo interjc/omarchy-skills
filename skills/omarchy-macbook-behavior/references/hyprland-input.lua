@@ -1,5 +1,6 @@
 -- Keep only your personal input overrides here.
 -- MacBook (Apple Multi-Touch Trackpad bcm5974) Ergonomics & Gesture Tuning
+-- Location: ~/.config/hypr/input.lua
 
 hl.config({
   input = {
@@ -11,8 +12,10 @@ hl.config({
       -- Palm rejection: Disable trackpad while typing on keyboard
       disable_while_typing = true,
 
-      -- macOS-style natural scrolling direction
-      natural_scroll = true,
+      -- Scrolling direction:
+      -- natural_scroll = false (Traditional: 2 fingers swipe UP moves page UP)
+      -- natural_scroll = true  (Natural: 2 fingers swipe UP moves page DOWN)
+      natural_scroll = false,
 
       -- Left-click-and-drag with three fingers (macOS Accessibility style)
       drag_3fg = 1,
@@ -26,7 +29,7 @@ hl.config({
       -- Single-finger double tap and drag
       tap_and_drag = true,
 
-      -- Fine-tuned macOS-like smooth scrolling factor
+      -- Fine-tuned smooth scrolling factor
       scroll_factor = 0.45,
 
       -- Clean two-finger right click without middle-click confusion

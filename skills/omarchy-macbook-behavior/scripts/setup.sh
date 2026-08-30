@@ -5,7 +5,43 @@ set -euo pipefail
 # Setup script: MacBook Behavior & Ergonomics for Omarchy Linux
 # ==============================================================================
 
-echo "==> [1/5] Installing Input Method Packages (Fcitx5 + Rime + Mozc)..."
+# Parse options
+NATURAL_SCROLL=""
+while (($#)); do
+  case "$1" in
+    --natural-scroll)
+      NATURAL_SCROLL="true"
+      shift
+      ;;
+    --traditional-scroll|--reverse-scroll)
+      NATURAL_SCROLL="false"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# If not provided via flag, ask interactively if in terminal, or default to false (traditional)
+if [ -z "$NATURAL_SCROLL" ]; then
+  if [ -t 0 ]; then
+    echo "================================================================="
+    echo " Choose your preferred trackpad scrolling direction:"
+    echo "   1) Traditional (2 fingers UP moves page UP) [Default]"
+    echo "   2) Natural / macOS (2 fingers UP moves page DOWN)"
+    echo "================================================================="
+    read -r -p "Select option [1/2] (default: 1): " scroll_choice </dev/tty || scroll_choice="1"
+    case "$scroll_choice" in
+      2) NATURAL_SCROLL="true" ;;
+      *) NATURAL_SCROLL="false" ;;
+    esac
+  else
+    NATURAL_SCROLL="false"
+  fi
+fi
+
+echo "==> [1/6] Installing Input Method Packages (Fcitx5 + Rime + Mozc)..."
 MISSING_PKGS=()
 for pkg in fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool fcitx5-rime fcitx5-mozc git; do
   if ! pacman -Q "$pkg" >/dev/null 2>&1; then
@@ -20,11 +56,11 @@ else
   echo "All required input method packages are already installed."
 fi
 
-echo "==> [2/5] Configuring Hyprland Trackpad (Three-finger drag, palm rejection, natural scroll)..."
+echo "==> [2/6] Configuring Hyprland Trackpad (Three-finger drag, palm rejection, scroll direction: natural_scroll=${NATURAL_SCROLL})..."
 mkdir -p "$HOME/.config/hypr"
 INPUT_LUA="$HOME/.config/hypr/input.lua"
 
-cat << 'EOF' > "$INPUT_LUA"
+cat << EOF > "$INPUT_LUA"
 -- Keep only your personal input overrides here.
 -- MacBook (Apple Multi-Touch Trackpad bcm5974) Ergonomics & Gesture Tuning
 hl.config({
@@ -37,8 +73,10 @@ hl.config({
       -- Palm rejection: Disable trackpad while typing on keyboard
       disable_while_typing = true,
 
-      -- macOS-style natural scrolling direction
-      natural_scroll = true,
+      -- Scrolling direction:
+      -- natural_scroll = false (Traditional: 2 fingers swipe UP moves page UP)
+      -- natural_scroll = true  (Natural: 2 fingers swipe UP moves page DOWN)
+      natural_scroll = ${NATURAL_SCROLL},
 
       -- Left-click-and-drag with three fingers (macOS Accessibility style)
       drag_3fg = 1,
@@ -52,7 +90,7 @@ hl.config({
       -- Single-finger double tap and drag
       tap_and_drag = true,
 
-      -- Fine-tuned macOS-like smooth scrolling factor
+      -- Fine-tuned smooth scrolling factor
       scroll_factor = 0.45,
 
       -- Clean two-finger right click without middle-click confusion
@@ -85,7 +123,7 @@ hl.gesture({
 })
 EOF
 
-echo "==> [3/5] Configuring macOS-style Screenshot & Shortcut Bindings..."
+echo "==> [3/6] Configuring macOS-style Screenshot & Shortcut Bindings..."
 BINDINGS_LUA="$HOME/.config/hypr/bindings.lua"
 if [ -f "$BINDINGS_LUA" ]; then
   if ! grep -q "ALT + SHIFT + 4" "$BINDINGS_LUA"; then
@@ -114,7 +152,7 @@ if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload 2>/dev/null || true
 fi
 
-echo "==> [4/5] Configuring Fcitx5 Input Methods (US, Chinese Rime, Japanese Mozc)..."
+echo "==> [4/6] Configuring Fcitx5 Input Methods (US, Chinese Rime, Japanese Mozc)..."
 mkdir -p "$HOME/.config/fcitx5"
 
 # Setup profile
@@ -234,7 +272,7 @@ echo "================================================================="
 echo " MacBook Behavior integration complete!"
 echo " - Trackpad: Three-finger drag enabled (drag_3fg = 1)"
 echo " - Trackpad: Palm rejection (disable_while_typing = true)"
-echo " - Trackpad: Natural scrolling enabled"
+echo " - Trackpad: Scroll direction set to natural_scroll = ${NATURAL_SCROLL}"
 echo " - Power:    Lid-close sleep & Clamshell mode optimized"
 echo " - IME:      US English, Chinese (Rime-Ice 雾凇), Japanese (Mozc)"
 echo " - IME Keys: Control+Space (trigger), Single Shift (EN/ZH toggle)"
