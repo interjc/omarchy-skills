@@ -1,0 +1,5 @@
+# Rime configuration patch to enable rime-ice (雾凇拼音)
+# Location: ~/.local/share/fcitx5/rime/default.custom.yaml
+
+patch:
+  __include: rime_ice_suggestion:/
