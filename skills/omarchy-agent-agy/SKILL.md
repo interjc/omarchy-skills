@@ -78,6 +78,19 @@ tail -f /dev/null | /usr/bin/agy --input-format stream-json --output-format stre
 
 ---
 
+## 🤝 User Confirmation & Preferences (用户偏好确认原则)
+
+> [!IMPORTANT]
+> **AI Agent Execution Rule**: When an AI agent executes this skill, it **MUST NOT** modify configuration files or deploy daemons silently without confirming the user's intent first.
+
+### Pre-Execution Confirmation Checklist
+Before running the setup script or applying manual steps, confirm the following choices with the user:
+1. **Default Agent Mapping**: Confirm that the user wishes to set `gemini -> agy` as their primary Omarchy coding agent.
+2. **Background Quota Daemon**: Ask if the user wants the 24/7 background systemd service (`agy-daemon.service`) enabled for continuous status bar quota tracking.
+3. **Keybinding Customization**: Confirm whether the default shortcut (`SUPER + SHIFT + CTRL + A`) or a custom key combination is desired.
+
+---
+
 ## ⚡ Quick Start (Automated Setup)
 
 If you have cloned this repository or installed it via `npx skills add interjc/omarchy-skills`:

@@ -41,6 +41,22 @@ This skill provides a complete set of configurations, optimizations, and automat
 
 ---
 
+## 🤝 User Confirmation & Preferences (用户偏好确认原则)
+
+> [!IMPORTANT]
+> **AI Agent Execution Rule**: When an AI agent executes this skill, it **MUST NOT** assume user preferences or silently modify input settings without asking the user first.
+
+### Pre-Execution Confirmation Checklist
+Before applying configurations or running the setup script, explicitly confirm:
+1. **Scrolling Direction**: Ask whether the user prefers:
+   - **Traditional Scrolling** (`natural_scroll = false`): 2 fingers swipe UP moves page UP.
+   - **Natural Scrolling** (`natural_scroll = true`): 2 fingers swipe UP moves page DOWN.
+2. **Input Method Packages**: Confirm which languages are needed (Chinese Rime-Ice, Japanese Mozc, English US).
+3. **Screenshot Hotkeys**: Confirm if `ALT + SHIFT + 4` (macOS `Cmd+Shift+4` style) or a different combination is preferred.
+4. **Sleep & Clamshell Policies**: Confirm if the machine is a laptop and whether lid-close sleep and external display clamshell mode should be enabled.
+
+---
+
 ## ⚡ Quick Start (Automated Setup)
 
 Run the all-in-one setup script included in this skill:
