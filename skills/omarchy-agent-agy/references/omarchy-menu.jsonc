@@ -1,0 +1,10 @@
+{
+  // Antigravity (agy) menu entry overriding the default gemini label in Omarchy QuickShell
+  // Location: ~/.config/omarchy/extensions/omarchy-menu.jsonc
+  "setup.default.agent.gemini": {
+    "icon": "󰫢",
+    "label": "Antigravity (agy)",
+    "checked": "[[ \"$(omarchy-default-agent)\" == \"gemini\" ]]",
+    "action": "omarchy-default-agent gemini"
+  }
+}

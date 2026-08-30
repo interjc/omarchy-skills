@@ -1,0 +1,8 @@
+# ai-usagebar configuration for Omarchy status bar
+# Location: ~/.config/ai-usagebar/config.toml
+
+[ui]
+primary = "antigravity"
+
+[antigravity]
+enabled = true
