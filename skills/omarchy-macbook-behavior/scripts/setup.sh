@@ -7,6 +7,7 @@ set -euo pipefail
 
 # Parse options
 NATURAL_SCROLL=""
+SCREENSHOT_HOTKEY=""
 while (($#)); do
   case "$1" in
     --natural-scroll)
@@ -15,6 +16,18 @@ while (($#)); do
       ;;
     --traditional-scroll|--reverse-scroll)
       NATURAL_SCROLL="false"
+      shift
+      ;;
+    --screenshot-hotkey)
+      SCREENSHOT_HOTKEY="$2"
+      shift 2
+      ;;
+    --super-ctrl-a)
+      SCREENSHOT_HOTKEY="super-ctrl-a"
+      shift
+      ;;
+    --alt-shift-4|--mac-screenshot)
+      SCREENSHOT_HOTKEY="alt-shift-4"
       shift
       ;;
     *)
@@ -38,6 +51,26 @@ if [ -z "$NATURAL_SCROLL" ]; then
     esac
   else
     NATURAL_SCROLL="false"
+  fi
+fi
+
+# If screenshot hotkey not provided, ask interactively
+if [ -z "$SCREENSHOT_HOTKEY" ]; then
+  if [ -t 0 ]; then
+    echo "================================================================="
+    echo " Choose your preferred screenshot hotkey (omasnap):"
+    echo "   1) Super + Ctrl + A (Snipaste / WeChat style, unbinds Audio menu) [Default]"
+    echo "   2) Alt + Shift + 4 (macOS Cmd+Shift+4 style)"
+    echo "   3) Both (Enable both Super+Ctrl+A and Alt+Shift+4)"
+    echo "================================================================="
+    read -r -p "Select option [1/2/3] (default: 1): " shot_choice </dev/tty || shot_choice="1"
+    case "$shot_choice" in
+      2) SCREENSHOT_HOTKEY="alt-shift-4" ;;
+      3) SCREENSHOT_HOTKEY="both" ;;
+      *) SCREENSHOT_HOTKEY="super-ctrl-a" ;;
+    esac
+  else
+    SCREENSHOT_HOTKEY="super-ctrl-a"
   fi
 fi
 
@@ -123,20 +156,36 @@ hl.gesture({
 })
 EOF
 
-echo "==> [3/6] Configuring macOS-style Screenshot & Shortcut Bindings..."
+echo "==> [3/6] Configuring Screenshot & Shortcut Bindings (omasnap: ${SCREENSHOT_HOTKEY})..."
 BINDINGS_LUA="$HOME/.config/hypr/bindings.lua"
-if [ -f "$BINDINGS_LUA" ]; then
-  if ! grep -q "ALT + SHIFT + 4" "$BINDINGS_LUA"; then
-    cat << 'EOF' >> "$BINDINGS_LUA"
+mkdir -p "$(dirname "$BINDINGS_LUA")"
+touch "$BINDINGS_LUA"
 
--- Omasnap screenshot overlay (macOS Cmd+Shift+4 style)
+if ! grep -q "omasnap" "$BINDINGS_LUA"; then
+  cat << 'EOF' >> "$BINDINGS_LUA"
+
+-- Omasnap screenshot overlay
 hl.unbind("PRINT")
 hl.unbind("F12")
-hl.unbind("ALT + SHIFT + 4")
+EOF
 
+  if [ "$SCREENSHOT_HOTKEY" = "super-ctrl-a" ] || [ "$SCREENSHOT_HOTKEY" = "both" ]; then
+    cat << 'EOF' >> "$BINDINGS_LUA"
+hl.unbind("SUPER + CTRL + A")
+o.bind("SUPER + CTRL + A", "Screenshot", "omasnap")
+EOF
+  fi
+
+  if [ "$SCREENSHOT_HOTKEY" = "alt-shift-4" ] || [ "$SCREENSHOT_HOTKEY" = "both" ]; then
+    cat << 'EOF' >> "$BINDINGS_LUA"
+hl.unbind("ALT + SHIFT + 4")
+o.bind("ALT + SHIFT + 4", "Area Screenshot (macOS Cmd+Shift+4)", "omasnap")
+EOF
+  fi
+
+  cat << 'EOF' >> "$BINDINGS_LUA"
 o.bind("PRINT", "Screenshot", "omasnap")
 o.bind("F12", "Screenshot", "omasnap")
-o.bind("ALT + SHIFT + 4", "Area Screenshot (macOS Cmd+Shift+4)", "omasnap")
 
 hl.layer_rule({
   match = { namespace = "^omasnap$" },
@@ -145,7 +194,16 @@ hl.layer_rule({
   no_screen_share = true,
 })
 EOF
-  fi
+fi
+
+# Clipboard history (Alfred style Super + Shift + Z)
+if ! grep -q "SUPER + SHIFT + Z" "$BINDINGS_LUA"; then
+  cat << 'EOF' >> "$BINDINGS_LUA"
+
+-- Clipboard history (Alfred style Super + Shift + Z)
+hl.unbind("SUPER + SHIFT + Z")
+o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")
+EOF
 fi
 
 if command -v hyprctl >/dev/null 2>&1; then
@@ -270,11 +328,12 @@ fi
 echo ""
 echo "================================================================="
 echo " MacBook Behavior integration complete!"
-echo " - Trackpad: Three-finger drag enabled (drag_3fg = 1)"
-echo " - Trackpad: Palm rejection (disable_while_typing = true)"
-echo " - Trackpad: Scroll direction set to natural_scroll = ${NATURAL_SCROLL}"
-echo " - Power:    Lid-close sleep & Clamshell mode optimized"
-echo " - IME:      US English, Chinese (Rime-Ice 雾凇), Japanese (Mozc)"
-echo " - IME Keys: Control+Space (trigger), Single Shift (EN/ZH toggle)"
-echo " - Shotcuts: ALT+SHIFT+4 for macOS-style area screenshot"
+echo " - Trackpad:   Three-finger drag enabled (drag_3fg = 1)"
+echo " - Trackpad:   Palm rejection (disable_while_typing = true)"
+echo " - Trackpad:   Scroll direction set to natural_scroll = ${NATURAL_SCROLL}"
+echo " - Power:      Lid-close sleep & Clamshell mode optimized"
+echo " - IME:        US English, Chinese (Rime-Ice 雾凇), Japanese (Mozc)"
+echo " - IME Keys:   Control+Space (trigger), Single Shift (EN/ZH toggle)"
+echo " - Clipboard:  SUPER+SHIFT+Z enabled for Alfred-style clipboard history"
+echo " - Screenshot: omasnap enabled with hotkey (${SCREENSHOT_HOTKEY})"
 echo "================================================================="

@@ -78,10 +78,22 @@ bash skills/omarchy-agent-agy/scripts/setup.sh
   - **Lid-Close Sleep**: Instantly locks session and enters suspend on battery when the laptop lid shuts; wakes immediately on touch.
   - **Clamshell Mode**: Seamlessly switches output and keeps external monitors awake without sleeping when docked.
   - **Logind Inhibit Delay (`InhibitDelayMaxSec=15`)**: Ensures display security lock completes before hardware sleep.
-- **macOS-Style Screenshots & Hotkeys**:
-  - `ALT + SHIFT + 4` for macOS-style area screenshot with `omasnap`.
+- **Customizable Screenshot Tool & Hotkeys (`omasnap`)**:
+  - Zero-latency Wayland overlay screenshot tool `omasnap` with region selection, pin, annotation, and instant clipboard copying.
+  - **Snipaste / WeChat Style (`SUPER + CTRL + A`)**: Automatically unbinds Omarchy's low-frequency default Audio panel hotkey to resolve shortcut conflicts.
+  - **macOS Style (`ALT + SHIFT + 4`)**: Direct muscle memory equivalent to Mac `Cmd + Shift + 4`.
+- **Alfred-Style Clipboard History & Hotkeys**:
+  - **Universal Copy & Paste**: `SUPER + C` and `SUPER + V` align system-wide with macOS `Cmd + C` / `Cmd + V`.
+  - **Alfred Clipboard History (`SUPER + SHIFT + Z`)**: Replicates Alfred's `Cmd + Shift + Z` muscle memory to invoke the native `omarchy.clipboard` manager for instant history search and one-click paste.
+- **Built-in Shortcut Auditor & Ergonomic Recommendations**:
+  - Integrated auditing script (`recommend-shortcuts.sh`) that lists default Omarchy shortcuts with ergonomic analysis.
+  - Strict 3-step workflow: inspect current bindings $\rightarrow$ recommend ergonomic, conflict-free combinations $\rightarrow$ apply only after explicit user confirmation.
 
 ```bash
+# Shortcut auditing & interactive recommendation
+bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
+
+# Full environment setup
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 ```
 

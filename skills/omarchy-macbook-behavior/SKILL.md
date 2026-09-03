@@ -1,6 +1,6 @@
 ---
 name: omarchy-macbook-behavior
-description: Configure Omarchy Linux to replicate macOS / MacBook ergonomic trackpad behaviors (three-finger drag, palm rejection, natural scroll), multilingual input methods (Chinese Rime-Ice & Japanese Mozc), sleep/clamshell power optimizations, and desktop hotkeys.
+description: Configure Omarchy Linux to replicate macOS / MacBook ergonomic trackpad behaviors (three-finger drag, palm rejection, natural scroll), multilingual input methods (Chinese Rime-Ice & Japanese Mozc), sleep/clamshell power optimizations, Alfred-style clipboard history (Super+Shift+Z), and customizable screenshot workflows (omasnap with Super+Ctrl+A / Alt+Shift+4). Includes built-in shortcut auditing and ergonomic recommendation workflows.
 ---
 
 # Omarchy MacBook Behavior & Ergonomics Guide 🍏
@@ -34,10 +34,17 @@ This skill provides a complete set of configurations, optimizations, and automat
    - **Instant Wake & DPMS**: Wakes instantly on keypress or trackpad touch (`key_press_enables_dpms = true`).
    - **Lid-Aware Biometric Gate**: Automatically falls back to password when lid is shut instead of blocking on inaccessible fingerprint sensors.
 
-4. **macOS-Style Shortcuts & Screenshot Workflow**:
-   - `ALT + SHIFT + 4` (equivalent to Mac `Cmd + Shift + 4`): Area screenshot with `omasnap`.
-   - `PRINT` / `F12`: Fullscreen screenshot.
-   - Hyprland layer rules with zero-animation overrides for instant screenshot overlay.
+4. **Customizable Screenshot Workflow (`omasnap`)**:
+   - **`omasnap` Screenshot Engine**: Lightweight, zero-latency Wayland overlay screenshot tool with area selection, annotation, and instant clipboard copying.
+   - **Flexible Hotkey Paradigms**:
+     - **Snipaste / WeChat Style (`SUPER + CTRL + A`)**: Familiar to dual-system and PC users. Unbinds Omarchy's default audio control hotkey (`hl.unbind("SUPER + CTRL + A")`) to eliminate shortcut conflicts.
+     - **macOS Style (`ALT + SHIFT + 4`)**: Direct muscle memory equivalent to Mac `Cmd + Shift + 4`.
+     - **Hardware Keys (`PRINT` / `F12`)**: Universal single-key triggers.
+   - **Layer Rules**: Zero-animation (`no_anim = true`, `no_screen_share = true`) to ensure screenshot overlays appear instantaneously and are hidden from screen sharing.
+
+5. **Alfred / macOS Muscle Memory Shortcuts (Clipboard History)**:
+   - **Universal Copy & Paste**: In Omarchy, `SUPER + C` and `SUPER + V` act as system-wide copy and paste (auto-adapting across GUI apps and terminals, matching macOS `Cmd + C` / `Cmd + V`).
+   - **Alfred-Style Clipboard History (`SUPER + SHIFT + Z`)**: Replicates Alfred's custom `Cmd + Shift + Z` muscle memory to invoke Omarchy's native `omarchy.clipboard` manager, complete with search, history browsing, text/image previews, and one-click paste.
 
 ---
 
@@ -46,23 +53,70 @@ This skill provides a complete set of configurations, optimizations, and automat
 > [!IMPORTANT]
 > **AI Agent Execution Rule**: When an AI agent executes this skill, it **MUST NOT** assume user preferences or silently modify input settings without asking the user first.
 
+### 📋 Three-Step Agent Workflow (AI 智能体三步执行法)
+When modifying system hotkeys or subjective user preferences, AI agents **MUST** strictly adhere to this 3-step workflow:
+1. **Step 1: Inspect & List (查询并列出内置快捷键)**:
+   - Inspect existing keybindings by running `omarchy menu keybindings --print` or `./scripts/recommend-shortcuts.sh`.
+   - Present the relevant built-in shortcuts to the user so they understand the current defaults.
+2. **Step 2: Recommend Ergonomic Options (推荐人机工学组合键)**:
+   - Present comfortable, low-strain shortcut combinations tailored to the user's muscle memory (macOS / Alfred / Snipaste / WeChat).
+   - Clearly explain ergonomics trade-offs and warn about any conflicts (e.g. unbinding the low-frequency default Audio menu to free up `SUPER + CTRL + A`).
+3. **Step 3: Strict User Confirmation (严格由用户确认后再修改)**:
+   - Present the proposed changes clearly.
+   - **Never apply changes silently**. Wait for explicit confirmation from the user, then update `~/.config/hypr/bindings.lua` and execute `hyprctl reload`.
+
 ### Pre-Execution Confirmation Checklist
 Before applying configurations or running the setup script, explicitly confirm:
 1. **Scrolling Direction**: Ask whether the user prefers:
    - **Traditional Scrolling** (`natural_scroll = false`): 2 fingers swipe UP moves page UP.
    - **Natural Scrolling** (`natural_scroll = true`): 2 fingers swipe UP moves page DOWN.
 2. **Input Method Packages**: Confirm which languages are needed (Chinese Rime-Ice, Japanese Mozc, English US).
-3. **Screenshot Hotkeys**: Confirm if `ALT + SHIFT + 4` (macOS `Cmd+Shift+4` style) or a different combination is preferred.
-4. **Sleep & Clamshell Policies**: Confirm if the machine is a laptop and whether lid-close sleep and external display clamshell mode should be enabled.
+3. **Screenshot Hotkeys**: Confirm preferred screenshot shortcut:
+   - `SUPER + CTRL + A` (Snipaste / WeChat style, frees up default Audio panel key) [Recommended].
+   - `ALT + SHIFT + 4` (macOS `Cmd+Shift+4` style).
+   - Both combinations enabled.
+4. **Clipboard History Hotkey**: Confirm if the user prefers `SUPER + SHIFT + Z` (Alfred muscle memory) in addition to or instead of default `SUPER + CTRL + V`.
+5. **Sleep & Clamshell Policies**: Confirm if the machine is a laptop and whether lid-close sleep and external display clamshell mode should be enabled.
 
 ---
 
-## ⚡ Quick Start (Automated Setup)
+## ⌨️ Built-in Shortcuts & Ergonomic Recommendations (常用内置快捷键与人机工学推荐)
 
-Run the all-in-one setup script included in this skill:
+| 功能类别 | Omarchy 默认快捷键 | 人机工学痛点与现状分析 | 推荐好按组合键 | 对应肌肉记忆 | 冲突处理建议 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **剪贴板历史** | `SUPER + CTRL + V` | 左手小指与拇指跨度较大，单手盲按容易变形疲倦 | **`SUPER + SHIFT + Z`** | **Alfred / Raycast (`Cmd+Shift+Z`)** | 无冲突，原生键位闲置，直接绑定 |
+| **区域截图** | `PRINT` / `F12` / 无 | 缺少顺手且符合国内/跨平台习惯的单手组合键 | **`SUPER + CTRL + A`** | **微信 / Snipaste (`Ctrl+Alt+A`)** | 默认被音频占用，需 `hl.unbind("SUPER + CTRL + A")` |
+| **区域截图 (Mac)** | `PRINT` / `F12` | 苹果转 Linux 用户找不到最习惯的 `Cmd+Shift+4` | **`ALT + SHIFT + 4`** | **macOS 原生 (`Cmd+Shift+4`)** | 无冲突，直接绑定至 `omasnap` |
+| **通用复制** | `SUPER + C` | 已完美支持 GUI 应用与终端自动适配 | `SUPER + C` (保持) | macOS 原生 (`Cmd+C`) | 保持默认 |
+| **通用粘贴** | `SUPER + V` | 已完美支持 GUI 应用与终端自动适配 | `SUPER + V` (保持) | macOS 原生 (`Cmd+V`) | 保持默认 |
+| **应用启动 / 搜索** | `SUPER + SPACE` | 响应迅速，全局居中聚焦搜索 | `SUPER + SPACE` (保持) | macOS Spotlight / Raycast | 保持默认 |
+| **系统控制 (电源)** | `SUPER + ESCAPE` | 一键唤出锁屏、休眠、注销、关机面板 | `SUPER + ESCAPE` (保持) | macOS 苹果左上角系统菜单 | 保持默认 |
+| **关闭当前窗口** | `SUPER + W` | 快速单手关闭当前窗口 | `SUPER + W` (保持) | macOS 原生 (`Cmd+W`) | 保持默认 |
+| **即时计算器** | `SUPER + CTRL + Q` | 轻量弹窗计算器 `omacalc`，按键集中在左上 | `SUPER + CTRL + Q` (保持) | Spotlight 快速数学计算 | 保持默认 |
+| **Emoji 拾取** | `SUPER + CTRL + E` | 快捷检索与插入 Emoji 和特殊符号 | `SUPER + CTRL + E` (保持) | macOS (`Cmd+Ctrl+Space`) | 保持默认 |
+| **音频控制面板** | `SUPER + CTRL + A` | 属于低频控制面板，但占用了极佳的截屏指法 | 建议解绑释放给截图 | 通过系统菜单或托盘调节 | 优先推荐解绑，腾出黄金热键 |
+| **启动器与输入法互换** | `SUPER + SPACE` (启动器) / `CTRL + SPACE` (输入法) | 现代 macOS 用户习惯用 `Cmd + Space` 切换输入法，用 `Ctrl + Space` 打开聚焦 | **`SUPER + SPACE` (输入法) / `CTRL + SPACE` (启动器)** | **现代 macOS 切换输入法习惯** | Hyprland 释放 `SUPER + SPACE` 绑 `CTRL + SPACE`，Fcitx5 设为 `Super+space` |
+
+---
+
+## ⚡ Quick Start (Automated Setup & Auditing)
+
+### 1. Run the Shortcut Auditor & Ergonomic Tool
+To inspect current shortcuts, view ergonomic recommendations, and interactively configure shortcuts with explicit confirmation:
 
 ```bash
+bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
+```
+
+### 2. Run the Full MacBook Behavior Setup Script
+To configure the complete trackpad, power, input method, and shortcut environment:
+
+```bash
+# Interactive setup (prompts for scroll direction, screenshot hotkey, and clipboard shortcut)
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
+
+# Or with explicit flags:
+bash skills/omarchy-macbook-behavior/scripts/setup.sh --natural-scroll --screenshot-hotkey super-ctrl-a
 ```
 
 ---
@@ -173,9 +227,33 @@ o.bind("switch:off:Lid Switch", nil, "omarchy-hyprland-monitor-clamshell", { loc
 
 ---
 
-### 3. Configure macOS-Style Screenshot Shortcuts
+### 3. Configure Screenshot Shortcuts (`omasnap`)
 
-In `~/.config/hypr/bindings.lua`, append the screenshot bindings:
+Omarchy uses `omasnap` as the overlay screenshot utility. Edit `~/.config/hypr/bindings.lua` to configure your preferred shortcut mapping:
+
+#### Option A: `SUPER + CTRL + A` (Snipaste / WeChat Style - Recommended)
+> [!NOTE]
+> Omarchy by default maps `SUPER + CTRL + A` to the Audio control menu (`omarchy-shell shell toggle omarchy.audio`). To use `SUPER + CTRL + A` for screenshots, unbind it first using `hl.unbind("SUPER + CTRL + A")`.
+
+```lua
+-- Omasnap screenshot overlay (SUPER + CTRL + A)
+hl.unbind("PRINT")
+hl.unbind("F12")
+hl.unbind("SUPER + CTRL + A") -- Free up default Audio panel shortcut
+
+o.bind("PRINT", "Screenshot", "omasnap")
+o.bind("F12", "Screenshot", "omasnap")
+o.bind("SUPER + CTRL + A", "Screenshot", "omasnap")
+
+hl.layer_rule({
+  match = { namespace = "^omasnap$" },
+  no_anim = true,
+  animation = "none",
+  no_screen_share = true,
+})
+```
+
+#### Option B: `ALT + SHIFT + 4` (macOS `Cmd + Shift + 4` Style)
 
 ```lua
 -- Omasnap screenshot overlay (macOS Cmd+Shift+4 style)
@@ -195,14 +273,30 @@ hl.layer_rule({
 })
 ```
 
-Reload Hyprland:
+---
+
+### 4. Configure Clipboard History (`SUPER + SHIFT + Z` Alfred Parity)
+
+In Omarchy:
+- <kbd>Super</kbd> + <kbd>C</kbd> and <kbd>Super</kbd> + <kbd>V</kbd> provide universal copy and paste (like macOS <kbd>Cmd</kbd> + <kbd>C</kbd> / <kbd>Cmd</kbd> + <kbd>V</kbd>).
+- The default clipboard history shortcut is <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd>.
+
+To replicate Alfred's clipboard history shortcut (<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> $\rightarrow$ <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd>), append the following to `~/.config/hypr/bindings.lua`:
+
+```lua
+-- Clipboard history (Alfred style Super + Shift + Z)
+hl.unbind("SUPER + SHIFT + Z")
+o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")
+```
+
+Reload Hyprland to apply:
 ```bash
 hyprctl reload
 ```
 
 ---
 
-### 4. Install & Configure Fcitx5 (Chinese + Japanese)
+### 5. Install & Configure Fcitx5 (Chinese + Japanese)
 
 #### Install Packages
 ```bash
@@ -294,7 +388,7 @@ AutoSavePeriod=30
 
 ---
 
-### 5. Deploy Rime-Ice (雾凇拼音) Schema
+### 6. Deploy Rime-Ice (雾凇拼音) Schema
 
 Rime-Ice provides the most accurate and up-to-date Chinese Pinyin lexicon:
 
@@ -338,16 +432,19 @@ fcitx5 -r -d 2>/dev/null || true
    - Press `Control + Space` $\rightarrow$ activates Rime (Chinese Pinyin).
    - Press single `Shift` $\rightarrow$ toggles between English and Chinese inline.
    - Press `Super + Space` $\rightarrow$ cycles to Mozc (Japanese) and English.
-5. **Test Area Screenshot**:
-   - Press `ALT + SHIFT + 4` $\rightarrow$ `omasnap` area selection overlay appears instantly.
+5. **Test Area Screenshot (`omasnap`)**:
+   - Press `SUPER + CTRL + A` (or `ALT + SHIFT + 4`) $\rightarrow$ `omasnap` area selection overlay appears instantly without delay or window borders.
+6. **Test Clipboard History**:
+   - Press `SUPER + SHIFT + Z` $\rightarrow$ Omarchy clipboard manager popup appears, allowing you to browse past copied text and images and paste with <kbd>Enter</kbd>.
 
 ---
 
 ## 📁 Reference Files
 
 - [`scripts/setup.sh`](./scripts/setup.sh) — All-in-one setup script.
+- [`scripts/recommend-shortcuts.sh`](./scripts/recommend-shortcuts.sh) — Shortcut auditor & interactive recommendation script.
 - [`references/hyprland-input.lua`](./references/hyprland-input.lua) — Hyprland trackpad settings.
-- [`references/hyprland-bindings.lua`](./references/hyprland-bindings.lua) — Screenshot and shortcut bindings.
+- [`references/hyprland-bindings.lua`](./references/hyprland-bindings.lua) — Screenshot, clipboard history (`SUPER + SHIFT + Z`), and hotkey bindings.
 - [`references/logind-inhibit-delay.conf`](./references/logind-inhibit-delay.conf) — Logind sleep delay configuration.
 - [`references/fcitx5-profile`](./references/fcitx5-profile) — Input method group profile.
 - [`references/fcitx5-config`](./references/fcitx5-config) — Hotkeys and behavior options.

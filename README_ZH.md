@@ -78,10 +78,22 @@ bash skills/omarchy-agent-agy/scripts/setup.sh
   - **合盖即走**：笔记本合盖即刻安全锁屏并挂起睡眠，按键/触摸即刻秒醒。
   - **蛤壳外接屏模式 (Clamshell)**：外接显示器时合盖不休眠，无缝关闭内屏并转移主显示输出。
   - **Logind 锁屏延迟保护 (`InhibitDelayMaxSec=15`)**：确保显示安全锁屏彻底完成后再进入硬件睡眠。
-- **macOS 风格截屏与系统快捷键**：
-  - `ALT + SHIFT + 4` 还原 Mac 区域截图（`omasnap`），`PRINT` / `F12` 全屏截图。
+- **截图工具与自定义快捷键 (`omasnap`)**：
+  - 基于 Wayland 零延迟图层截图工具 `omasnap`，支持区域选择、贴图、标注与剪贴板复制。
+  - **微信 / Snipaste 习惯 (`SUPER + CTRL + A`)**：自动解绑 Omarchy 默认占用的低频音频控制菜单，彻底消除热键冲突。
+  - **macOS 经典习惯 (`ALT + SHIFT + 4`)**：完美对齐 Mac 原生 `Cmd + Shift + 4` 截图手感。
+- **Alfred 习惯剪贴板历史与快捷键**：
+  - **通用复制粘贴**：`Super + C` / `Super + V` 系统级全局对齐 macOS `Cmd + C` / `Cmd + V`。
+  - **Alfred 剪贴板历史 (`SUPER + SHIFT + Z`)**：复刻 Alfred `Cmd + Shift + Z` 肌肉记忆快速唤出剪贴板历史管理器（`omarchy.clipboard`），支持图文预览搜索与回车一键粘贴。
+- **内置快捷键审计与人机工学推荐引擎**：
+  - 内置快速审计脚本（`recommend-shortcuts.sh`），自动对比系统常用内置快捷键与痛点分析。
+  - 严格遵循「查询当前键位 $\rightarrow$ 推荐舒适组合 $\rightarrow$ 用户确认后再修改」的 3 步原则。
 
 ```bash
+# 快捷键审计与交互式推荐
+bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
+
+# 完整环境安装
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 ```
 
