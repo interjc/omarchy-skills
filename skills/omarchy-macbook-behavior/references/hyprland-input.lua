@@ -37,6 +37,15 @@ hl.config({
     },
   },
 
+  gestures = {
+    -- Fluid macOS-like workspace swipe physics
+    workspace_swipe_distance = 300,
+    workspace_swipe_cancel_ratio = 0.3,
+    workspace_swipe_min_speed_to_force = 15,
+    workspace_swipe_direction_lock = true,
+    workspace_swipe_direction_lock_threshold = 10,
+  },
+
   misc = {
     -- Instant display wake upon touching trackpad or keyboard
     key_press_enables_dpms = true,
@@ -52,7 +61,7 @@ o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
 -- 4-finger horizontal swipe: Smoothly switch workspaces (coexists with 3-finger drag)
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
 
--- 4-finger swipe up: Toggle scratchpad / special workspace
+-- 4-finger swipe up: Toggle scratchpad / special workspace (Mission Control style)
 hl.gesture({
   fingers = 4,
   direction = "up",
@@ -60,3 +69,22 @@ hl.gesture({
     hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
   end,
 })
+
+-- 4-finger swipe down: Dismiss / toggle scratchpad
+hl.gesture({
+  fingers = 4,
+  direction = "down",
+  action = function()
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end,
+})
+
+-- 4-finger pinch in: Launchpad / Application launcher (omarchy-menu)
+hl.gesture({
+  fingers = 4,
+  direction = "pinchin",
+  action = function()
+    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
+  end,
+})
+

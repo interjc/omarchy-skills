@@ -1,0 +1,3 @@
+# Fix Apple MacBook internal trackpad falsely classified as external USB device.
+# This ensures libinput enables palm rejection (Disable-While-Typing) paired with the internal keyboard.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", ENV{ID_USB_DRIVER}=="bcm5974", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"

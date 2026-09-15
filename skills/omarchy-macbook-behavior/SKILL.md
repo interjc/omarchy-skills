@@ -164,6 +164,15 @@ hl.config({
     },
   },
 
+  gestures = {
+    -- Fluid macOS-like workspace swipe physics
+    workspace_swipe_distance = 300,
+    workspace_swipe_cancel_ratio = 0.3,
+    workspace_swipe_min_speed_to_force = 15,
+    workspace_swipe_direction_lock = true,
+    workspace_swipe_direction_lock_threshold = 10,
+  },
+
   misc = {
     -- Instant display wake upon touching trackpad or keyboard
     key_press_enables_dpms = true,
@@ -179,7 +188,7 @@ o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
 -- 4-finger horizontal swipe: Smoothly switch workspaces (coexists with 3-finger drag)
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
 
--- 4-finger swipe up: Toggle scratchpad / special workspace
+-- 4-finger swipe up: Toggle scratchpad / special workspace (Mission Control style)
 hl.gesture({
   fingers = 4,
   direction = "up",
@@ -187,11 +196,46 @@ hl.gesture({
     hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
   end,
 })
+
+-- 4-finger swipe down: Dismiss / toggle scratchpad
+hl.gesture({
+  fingers = 4,
+  direction = "down",
+  action = function()
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end,
+})
+
+-- 4-finger pinch in: Launchpad / Application launcher (omarchy-menu)
+hl.gesture({
+  fingers = 4,
+  direction = "pinchin",
+  action = function()
+    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
+  end,
+})
 ```
 
 Reload Hyprland:
 ```bash
 hyprctl reload
+```
+
+#### Fix Built-in Apple Trackpad Palm Rejection (DWT)
+By default, Linux udev rules classify Apple internal USB trackpads (`bcm5974`) as `ID_INPUT_TOUCHPAD_INTEGRATION=external`. Because `libinput` disables Disable-While-Typing (DWT) on external touchpads, palm rejection fails to activate even with `disable_while_typing = true`.
+
+To ensure libinput pairs the trackpad with the internal keyboard and enables palm rejection:
+
+Create `/etc/udev/rules.d/71-apple-trackpad-internal.rules`:
+```udev
+# Fix Apple MacBook internal trackpad falsely classified as external USB device.
+# This ensures libinput enables palm rejection (Disable-While-Typing) paired with the internal keyboard.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", ENV{ID_USB_DRIVER}=="bcm5974", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"
+```
+
+Reload and trigger udev:
+```bash
+sudo udevadm control --reload && sudo udevadm trigger -s input
 ```
 
 ---
@@ -444,6 +488,7 @@ fcitx5 -r -d 2>/dev/null || true
 - [`scripts/setup.sh`](./scripts/setup.sh) — All-in-one setup script.
 - [`scripts/recommend-shortcuts.sh`](./scripts/recommend-shortcuts.sh) — Shortcut auditor & interactive recommendation script.
 - [`references/hyprland-input.lua`](./references/hyprland-input.lua) — Hyprland trackpad settings.
+- [`references/71-apple-trackpad-internal.rules`](./references/71-apple-trackpad-internal.rules) — Apple internal trackpad udev rule (palm rejection / DWT fix).
 - [`references/hyprland-bindings.lua`](./references/hyprland-bindings.lua) — Screenshot, clipboard history (`SUPER + SHIFT + Z`), and hotkey bindings.
 - [`references/logind-inhibit-delay.conf`](./references/logind-inhibit-delay.conf) — Logind sleep delay configuration.
 - [`references/fcitx5-profile`](./references/fcitx5-profile) — Input method group profile.

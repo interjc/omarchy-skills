@@ -131,6 +131,15 @@ hl.config({
     },
   },
 
+  gestures = {
+    -- Fluid macOS-like workspace swipe physics
+    workspace_swipe_distance = 300,
+    workspace_swipe_cancel_ratio = 0.3,
+    workspace_swipe_min_speed_to_force = 15,
+    workspace_swipe_direction_lock = true,
+    workspace_swipe_direction_lock_threshold = 10,
+  },
+
   misc = {
     -- Instant display wake upon touching trackpad or keyboard
     key_press_enables_dpms = true,
@@ -146,12 +155,30 @@ o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
 -- 4-finger horizontal swipe: Smoothly switch workspaces (coexists with 3-finger drag)
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
 
--- 4-finger swipe up: Toggle scratchpad / special workspace
+-- 4-finger swipe up: Toggle scratchpad / special workspace (Mission Control style)
 hl.gesture({
   fingers = 4,
   direction = "up",
   action = function()
     hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end,
+})
+
+-- 4-finger swipe down: Dismiss / toggle scratchpad
+hl.gesture({
+  fingers = 4,
+  direction = "down",
+  action = function()
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end,
+})
+
+-- 4-finger pinch in: Launchpad / Application launcher (omarchy-menu)
+hl.gesture({
+  fingers = 4,
+  direction = "pinchin",
+  action = function()
+    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
   end,
 })
 EOF
@@ -313,7 +340,7 @@ if command -v fcitx5-remote >/dev/null 2>&1; then
   fcitx5 -r -d >/dev/null 2>&1 || true
 fi
 
-echo "==> [6/6] Optimizing Sleep & Logind Inhibit Delay..."
+echo "==> [6/7] Optimizing Sleep & Logind Inhibit Delay..."
 if [ -d "/etc/systemd/logind.conf.d" ]; then
   if [ ! -f "/etc/systemd/logind.conf.d/20-inhibit-delay.conf" ]; then
     echo "Setting up /etc/systemd/logind.conf.d/20-inhibit-delay.conf (requires sudo)..."
@@ -322,6 +349,24 @@ if [ -d "/etc/systemd/logind.conf.d" ]; then
 [Login]
 InhibitDelayMaxSec=15
 EOF'
+  fi
+fi
+
+echo "==> [7/7] Configuring Apple Trackpad Internal Device Udev Rule (Palm rejection & DWT fix)..."
+if lsmod | grep -qE "(bcm5974|applespi)" || [ -d "/sys/bus/usb/drivers/bcm5974" ]; then
+  if [ ! -f "/etc/udev/rules.d/71-apple-trackpad-internal.rules" ]; then
+    echo "Setting up /etc/udev/rules.d/71-apple-trackpad-internal.rules (requires sudo)..."
+    sudo mkdir -p /etc/udev/rules.d
+    sudo bash -c 'cat << "EOF" > /etc/udev/rules.d/71-apple-trackpad-internal.rules
+# Fix Apple MacBook internal trackpad falsely classified as external USB device.
+# This ensures libinput enables palm rejection (Disable-While-Typing) paired with the internal keyboard.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", ENV{ID_USB_DRIVER}=="bcm5974", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"
+EOF'
+    sudo udevadm control --reload 2>/dev/null || true
+    sudo udevadm trigger -s input 2>/dev/null || true
+    echo "Apple trackpad udev rule installed and reloaded."
+  else
+    echo "Apple trackpad udev rule is already present."
   fi
 fi
 
