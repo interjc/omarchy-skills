@@ -356,6 +356,133 @@ Expected output:
 
 ---
 
+## 🔄 Maintenance & Safe Upgrade Strategy (维护与安全升级指南)
+
+Because `ai-usagebar` integrates closely with the status bar, user shims, and background daemons, follow this structured upgrade strategy when new versions of `ai-usagebar` or its Omarchy plugin are released.
+
+### 1. Architectural Separation & Customization Safety
+
+The integration follows Omarchy's **Non-Destructive Principle**:
+- **Backend Binary (`ai-usagebar-bin`)**: Managed via AUR/pacman (`/usr/bin/ai-usagebar`).
+- **Omarchy Shell Plugin (`akitaonrails.ai-usagebar`)**: Cloned into `~/.config/omarchy/plugins/akitaonrails.ai-usagebar/`.
+- **User Configurations & Shims**:
+  - `~/.config/ai-usagebar/config.toml` (vendor configurations, e.g., Antigravity, SuperGrok, OpenAI)
+  - `~/.local/bin/ai-usagebar-grok-acp` (custom protocol adapter/shim if needed)
+  - `~/.config/systemd/user/agy-daemon.service` (headless RPC daemon)
+
+> [!NOTE]
+> User configurations in `~/.config/ai-usagebar/` and custom shims in `~/.local/bin/` live outside both the git repository and AUR package boundaries. They will **not** be overwritten during upgrades.
+
+### 2. Standard Upgrade Procedure
+
+#### Step A: Upgrade the Backend Binary (AUR)
+Keep the underlying CLI binary updated to access newer vendor endpoints and protocol fixes:
+```bash
+yay -Syu ai-usagebar-bin
+# or: omarchy pkg aur update ai-usagebar-bin
+```
+
+#### Step B: Upgrade the Status Bar Plugin (Git / Omarchy Shell)
+Omarchy provides built-in plugin update capabilities:
+```bash
+omarchy plugin update akitaonrails.ai-usagebar
+```
+*Note*: `omarchy plugin update` executes `git merge --ff-only FETCH_HEAD`. As long as you have not directly edited tracked files inside the plugin folder, the update applies cleanly without conflicts and hot-reloads the Quickshell UI.
+
+#### Step C: Post-Upgrade Verification
+Verify that both the daemon and status bar can read metrics after an upgrade:
+```bash
+# 1. Test CLI metrics query
+ai-usagebar usage
+
+# 2. If the status bar did not auto-refresh, force a plugin reload
+omarchy-shell shell rescanPlugins
+```
+
+### 3. Handling Custom Source-Code Modifications (If Modifying QML / JS)
+
+If you plan to modify or have modified the plugin's source code (such as `omarchy/BarWidget.qml` or `omarchy/Panel.qml`), choose one of the following maintenance patterns:
+
+- **Pattern A: Local Git Branch & Rebase (Recommended for minor tweaks)**:
+  Commit your customizations to a local tracking branch instead of `main`:
+  ```bash
+  cd ~/.config/omarchy/plugins/akitaonrails.ai-usagebar
+  git checkout -b custom-modifications
+  git commit -am "My custom QML tweaks"
+  ```
+  When upgrading:
+  ```bash
+  git checkout main
+  git pull --ff-only origin main
+  git checkout custom-modifications
+  git rebase main
+  omarchy-shell shell rescanPlugins
+  ```
+
+- **Pattern B: Fork into an Independent Plugin ID (Recommended for major redesigns)**:
+  Clone the plugin with a unique identifier (e.g. `user.ai-usagebar`) to completely decouple your changes from the upstream repository:
+  1. Rename or copy folder: `cp -r ~/.config/omarchy/plugins/akitaonrails.ai-usagebar ~/.config/omarchy/plugins/<username>.ai-usagebar`
+  2. Change `"id"` in `manifest.json` to `<username>.ai-usagebar`.
+  3. Update `~/.config/omarchy/shell.json` to reference `<username>.ai-usagebar`.
+
+### 4. Transitioning Custom Shims to Upstream Native (e.g., Grok / SuperGrok)
+
+When upstream software matures, temporary protocol adapters or shims (such as `ai-usagebar-grok-acp`) become obsolete. Follow this evaluation and transition workflow to safely decommission shims.
+
+#### Background Context
+Early versions of `ai-usagebar` (v1.3.1) communicated with Grok CLI (v1.0.5) via standard input/output using the JSON-RPC ACP method `x.ai/billing`. When Grok changed the method name to `_x.ai/billing`, a Python stdio shim (`~/.local/bin/ai-usagebar-grok-acp`) was placed between them. 
+Modern `ai-usagebar` (v1.9.1+ / v1.20.2+) introduced **Direct HTTPS mode**: it directly reads authentication credentials from `~/.grok/auth.json` and contacts `https://cli-chat-proxy.grok.com/v1/billing`, completely bypassing the CLI subprocess and ACP protocol.
+
+#### How to Determine If Native Grok Usage Can Be Used (判断依据)
+Verify that all of the following conditions are met:
+1. **Binary Version Check**: `ai-usagebar` is version $\ge$ `1.9.1` (or `1.20.0+`):
+   ```bash
+   ai-usagebar --version
+   ```
+2. **Credential Existence**: Grok login credential exists and contains a valid key:
+   ```bash
+   test -f "$HOME/.grok/auth.json" && echo "Grok credentials found"
+   ```
+3. **Isolated Non-Destructive Test**:
+   Run an isolated query with a temporary configuration omitting `grok_binary`:
+   ```bash
+   printf '[supergrok]\nenabled = true\n' > /tmp/test-grok.toml
+   ai-usagebar --config /tmp/test-grok.toml --vendor supergrok --pretty
+   rm -f /tmp/test-grok.toml
+   ```
+   **Pass Criteria**: The output displays the `SuperGrok` usage card (e.g., `Weekly usage`, `Grok Build`, `Grok Chat`) with an updated timestamp and no transport error.
+
+#### How to Switch to Native and Remove Custom Shims (切换到原生步骤)
+
+Once verified, cleanly retire the custom shim:
+
+1. **Update `~/.config/ai-usagebar/config.toml`**:
+   Remove the `grok_binary` parameter and legacy shim comments under `[supergrok]`:
+   ```toml
+   # Keep only standard provider activation:
+   [supergrok]
+   enabled = true
+   ```
+2. **Remove or Archive the Custom Shim Script**:
+   ```bash
+   # Remove:
+   rm -f ~/.local/bin/ai-usagebar-grok-acp
+
+   # Or archive to backup:
+   mv ~/.local/bin/ai-usagebar-grok-acp ~/.local/bin/ai-usagebar-grok-acp.bak
+   ```
+3. **Purge Cache & Verify Full Output**:
+   ```bash
+   rm -rf ~/.cache/ai-usagebar/supergrok/
+   ai-usagebar usage
+   ```
+4. **Hot-Reload the Status Bar Widget**:
+   ```bash
+   omarchy-shell shell rescanPlugins
+   ```
+
+---
+
 ## 🛠️ Troubleshooting & FAQs
 
 ### Q1: `ai-usagebar` reports "No Antigravity Language Server found"
