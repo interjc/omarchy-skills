@@ -1,90 +1,26 @@
--- Keep only your personal input overrides here.
--- MacBook (Apple Multi-Touch Trackpad bcm5974) Ergonomics & Gesture Tuning
--- Location: ~/.config/hypr/input.lua
-
+-- Optional trackpad override, loaded AFTER personal configuration; do not replace input.lua.
+-- For this replacement scheme, REQUIRED before require("default.hypr.omarchy"):
+-- omarchy_default_gestures = false
+-- On newer builds, upstream three-finger gestures steal drag and four-finger ones conflict.
+-- The live 4.0.6-1 install has no default/hypr/gestures.lua and no such default conflict.
+-- Shortcut-only setup uses --keep-trackpad: no input changes, gestures or disable flag.
+-- Review personal gesture definitions separately: this flag only disables upstream defaults.
 hl.config({
   input = {
-    -- Hardware acceleration profile for smooth pointer feel
-    sensitivity = 0,
-    accel_profile = "adaptive",
-
     touchpad = {
-      -- Palm rejection: Disable trackpad while typing on keyboard
-      disable_while_typing = true,
-
-      -- Scrolling direction:
-      -- natural_scroll = false (Traditional: 2 fingers swipe UP moves page UP)
-      -- natural_scroll = true  (Natural: 2 fingers swipe UP moves page DOWN)
+      -- Choose explicitly: true = content follows fingers (natural); false = traditional.
       natural_scroll = false,
-
-      -- Left-click-and-drag with three fingers (macOS Accessibility style)
+      disable_while_typing = true,
       drag_3fg = 1,
-
-      -- Clickfinger mapping (1 finger = Left, 2 fingers = Right, 3 fingers = Middle)
-      clickfinger_behavior = true,
-
-      -- Tap to click (soft touch)
-      tap_to_click = true,
-
-      -- Single-finger double tap and drag
-      tap_and_drag = true,
-
-      -- Fine-tuned smooth scrolling factor
-      scroll_factor = 0.45,
-
-      -- Clean two-finger right click without middle-click confusion
-      middle_button_emulation = false,
     },
   },
-
-  gestures = {
-    -- Fluid macOS-like workspace swipe physics
-    workspace_swipe_distance = 300,
-    workspace_swipe_cancel_ratio = 0.3,
-    workspace_swipe_min_speed_to_force = 15,
-    workspace_swipe_direction_lock = true,
-    workspace_swipe_direction_lock_threshold = 10,
-  },
-
-  misc = {
-    -- Instant display wake upon touching trackpad or keyboard
-    key_press_enables_dpms = true,
-    mouse_move_enables_dpms = true,
-  },
 })
 
--- Terminal-specific scroll speeds
-o.window("(Alacritty|kitty|foot)", { scroll_touchpad = 1.4 })
-o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
-
--- macOS Multi-Finger Trackpad Gestures
--- 4-finger horizontal swipe: Smoothly switch workspaces (coexists with 3-finger drag)
+-- Keep upstream pointer acceleration, click/tap behavior and terminal scroll factors.
+-- Four-finger workspace navigation leaves three fingers available for dragging.
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
-
--- 4-finger swipe up: Toggle scratchpad / special workspace (Mission Control style)
-hl.gesture({
-  fingers = 4,
-  direction = "up",
-  action = function()
-    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
-  end,
-})
-
--- 4-finger swipe down: Dismiss / toggle scratchpad
-hl.gesture({
-  fingers = 4,
-  direction = "down",
-  action = function()
-    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
-  end,
-})
-
--- 4-finger pinch in: Launchpad / Application launcher (omarchy-menu)
-hl.gesture({
-  fingers = 4,
-  direction = "pinchin",
-  action = function()
-    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
-  end,
-})
-
+hl.gesture({ fingers = 4, direction = "up", action = "special", workspace_name = "scratchpad" })
+hl.gesture({ fingers = 4, direction = "down", action = "special", workspace_name = "scratchpad" })
+hl.gesture({ fingers = 4, direction = "pinchin", action = function()
+  hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
+end })

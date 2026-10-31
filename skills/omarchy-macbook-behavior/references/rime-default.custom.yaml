@@ -1,5 +1,7 @@
 # Rime configuration patch to enable rime-ice (雾凇拼音)
 # Location: ~/.local/share/fcitx5/rime/default.custom.yaml
+# OPTIONAL EXAMPLE ONLY: install/review rime-ice first and merge into existing patch.
+# Do not overwrite existing schemas, dictionaries, user databases or custom YAML.
 
 patch:
   __include: rime_ice_suggestion:/

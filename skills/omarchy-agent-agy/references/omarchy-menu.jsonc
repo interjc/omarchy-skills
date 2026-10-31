@@ -1,6 +1,8 @@
 {
-  // Antigravity (agy) menu entry overriding the default gemini label in Omarchy QuickShell
-  // Location: ~/.config/omarchy/extensions/omarchy-menu.jsonc
+  // LEGACY ONLY: merge this member manually into the existing JSONC object,
+  // after backing it up. Never replace a customized menu with this example.
+  // Native quattro already has setup.default.agent.agy; no override is needed.
+  // Only use gemini below with the verified legacy dispatcher and approved shim.
   "setup.default.agent.gemini": {
     "icon": "󰫢",
     "label": "Antigravity (agy)",

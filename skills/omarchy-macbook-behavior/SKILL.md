@@ -1,496 +1,180 @@
 ---
 name: omarchy-macbook-behavior
-description: Configure Omarchy Linux to replicate macOS / MacBook ergonomic trackpad behaviors (three-finger drag, palm rejection, natural scroll), multilingual input methods (Chinese Rime-Ice & Japanese Mozc), sleep/clamshell power optimizations, Alfred-style clipboard history (Super+Shift+Z), and customizable screenshot workflows (omasnap with Super+Ctrl+A / Alt+Shift+4). Includes built-in shortcut auditing and ergonomic recommendation workflows.
+description: Configure confirmed MacBook-style trackpad and shortcut preferences on Omarchy's Lua Hyprland configuration, including three-finger drag and four-finger gestures. Audit live shortcuts and guide optional multilingual input, lid/power and hardware diagnostics without replacing personal configuration.
 ---
 
-# Omarchy MacBook Behavior & Ergonomics Guide 🍏
+[English](SKILL.md) | [简体中文](SKILL_ZH.md)
 
-This skill provides a complete set of configurations, optimizations, and automation scripts to replicate the smooth, ergonomic **macOS and MacBook user experience** on **Omarchy Linux**.
+# Omarchy MacBook Behavior
 
----
+## Scope and Compatibility
 
-## 🎯 Key Objectives
+Audited against upstream `quattro` commit `bda3aaf6955404712dbd46541e6c8a75a2b16b7c`, dated **2026-10-31**. The latest stable tag checked separately was **v4.0.6**. This is a snapshot, not a promise that stable or older installs have the same APIs, shortcuts or systemd units. The automated path requires the current Lua configuration with `require("default.hypr.omarchy")`; older `.conf` installs need a separate, version-specific review.
 
-1. **MacBook-Grade Trackpad Ergonomics**:
-   - **Three-Finger Drag (`drag_3fg = 1`)**: Replicate macOS Accessibility three-finger drag for seamless window dragging and text selection without physical clicking.
-   - **Palm Rejection (`disable_while_typing = true`)**: Automatically disable touchpad response while typing to prevent accidental cursor jumping.
-   - **Natural Scrolling (`natural_scroll = true`)**: Directional parity with macOS touchpads.
-   - **Clickfinger Behavior (`clickfinger_behavior = true`)**: 1 finger = Left Click, 2 fingers = Right Click, 3 fingers = Middle Click.
-   - **Smooth Scrolling Factor**: Optimized velocity curves for desktop and terminal emulators.
+The live **4.0.6-1** install still uses grim, `omarchy-capture-region` and tensaku in `omarchy-capture-screenshot`, not `omasnap`; its separately installed `omasnap` supports `--save` / `--capture-fullscreen` but not `--notify`. This machine has no `default/hypr/gestures.lua` at all, so this release has no gesture conflict from that default module; newer `quattro` behavior must not be assumed here. Use `--keep-trackpad` for shortcut-only installation, preserving existing `input.lua` without adding gestures or a disable flag. On newer builds loading default gestures, the replacement trackpad scheme still requires `omarchy_default_gestures = false` before the defaults import.
 
-2. **Multilingual Input Method (macOS Layout: 中/日/英)**:
-   - **Fcitx5 Engine**: Fully integrated with Hyprland and Wayland environments.
-   - **Chinese IME**: Powered by `fcitx5-rime` with the **Rime-Ice (雾凇拼音)** dictionary schema.
-   - **Japanese IME**: Powered by `fcitx5-mozc` (Google Japanese Input).
-   - **macOS Shortcut Parity**:
-     - `Control + Space` / `Super + Space`: Toggle and cycle input methods.
-     - Single `Shift_L`: Instant English / Chinese inline switching.
-   - **macOS Behavior**: Independent input state per application window (`ShareInputState = No`) and clean 5-candidate horizontal pagination.
+Omarchy already provides clipboard history, screenshot capture, multilingual input switching, lid/clamshell handling, and Apple SMC lid bindings. This skill adds a small, optional trackpad/shortcut override, not a replacement desktop stack or guaranteed macOS behavior. It never changes `/usr/share/omarchy/`.
 
-3. **MacBook Sleep, Lid-Close & Clamshell Management**:
-   - **Instant Sleep on Lid Close (合盖即走)**: Automatically locks session and suspends immediately when closing the laptop lid on battery.
-   - **External Display Clamshell Mode (蛤壳外接屏模式)**: When docked to an external monitor, closing the lid keeps the session alive, turns off the internal panel, and redirects output seamlessly without sleeping.
-   - **Inhibit Delay (`InhibitDelayMaxSec=15`)**: Guarantees the lock screen is fully rendered and secured before hardware ACPI suspend triggers.
-   - **Instant Wake & DPMS**: Wakes instantly on keypress or trackpad touch (`key_press_enables_dpms = true`).
-   - **Lid-Aware Biometric Gate**: Automatically falls back to password when lid is shut instead of blocking on inaccessible fingerprint sensors.
-
-4. **Customizable Screenshot Workflow (`omasnap`)**:
-   - **`omasnap` Screenshot Engine**: Lightweight, zero-latency Wayland overlay screenshot tool with area selection, annotation, and instant clipboard copying.
-   - **Flexible Hotkey Paradigms**:
-     - **Snipaste / WeChat Style (`SUPER + CTRL + A`)**: Familiar to dual-system and PC users. Unbinds Omarchy's default audio control hotkey (`hl.unbind("SUPER + CTRL + A")`) to eliminate shortcut conflicts.
-     - **macOS Style (`ALT + SHIFT + 4`)**: Direct muscle memory equivalent to Mac `Cmd + Shift + 4`.
-     - **Hardware Keys (`PRINT` / `F12`)**: Universal single-key triggers.
-   - **Layer Rules**: Zero-animation (`no_anim = true`, `no_screen_share = true`) to ensure screenshot overlays appear instantaneously and are hidden from screen sharing.
-
-5. **Alfred / macOS Muscle Memory Shortcuts (Clipboard History)**:
-   - **Universal Copy & Paste**: In Omarchy, `SUPER + C` and `SUPER + V` act as system-wide copy and paste (auto-adapting across GUI apps and terminals, matching macOS `Cmd + C` / `Cmd + V`).
-   - **Alfred-Style Clipboard History (`SUPER + SHIFT + Z`)**: Replicates Alfred's custom `Cmd + Shift + Z` muscle memory to invoke Omarchy's native `omarchy.clipboard` manager, complete with search, history browsing, text/image previews, and one-click paste.
-
----
-
-## 🤝 User Confirmation & Preferences (用户偏好确认原则)
-
-> [!IMPORTANT]
-> **AI Agent Execution Rule**: When an AI agent executes this skill, it **MUST NOT** assume user preferences or silently modify input settings without asking the user first.
-
-### 📋 Three-Step Agent Workflow (AI 智能体三步执行法)
-When modifying system hotkeys or subjective user preferences, AI agents **MUST** strictly adhere to this 3-step workflow:
-1. **Step 1: Inspect & List (查询并列出内置快捷键)**:
-   - Inspect existing keybindings by running `omarchy menu keybindings --print` or `./scripts/recommend-shortcuts.sh`.
-   - Present the relevant built-in shortcuts to the user so they understand the current defaults.
-2. **Step 2: Recommend Ergonomic Options (推荐人机工学组合键)**:
-   - Present comfortable, low-strain shortcut combinations tailored to the user's muscle memory (macOS / Alfred / Snipaste / WeChat).
-   - Clearly explain ergonomics trade-offs and warn about any conflicts (e.g. unbinding the low-frequency default Audio menu to free up `SUPER + CTRL + A`).
-3. **Step 3: Strict User Confirmation (严格由用户确认后再修改)**:
-   - Present the proposed changes clearly.
-   - **Never apply changes silently**. Wait for explicit confirmation from the user, then update `~/.config/hypr/bindings.lua` and execute `hyprctl reload`.
-
-### Pre-Execution Confirmation Checklist
-Before applying configurations or running the setup script, explicitly confirm:
-1. **Scrolling Direction**: Ask whether the user prefers:
-   - **Traditional Scrolling** (`natural_scroll = false`): 2 fingers swipe UP moves page UP.
-   - **Natural Scrolling** (`natural_scroll = true`): 2 fingers swipe UP moves page DOWN.
-2. **Input Method Packages**: Confirm which languages are needed (Chinese Rime-Ice, Japanese Mozc, English US).
-3. **Screenshot Hotkeys**: Confirm preferred screenshot shortcut:
-   - `SUPER + CTRL + A` (Snipaste / WeChat style, frees up default Audio panel key) [Recommended].
-   - `ALT + SHIFT + 4` (macOS `Cmd+Shift+4` style).
-   - Both combinations enabled.
-4. **Clipboard History Hotkey**: Confirm if the user prefers `SUPER + SHIFT + Z` (Alfred muscle memory) in addition to or instead of default `SUPER + CTRL + V`.
-5. **Sleep & Clamshell Policies**: Confirm if the machine is a laptop and whether lid-close sleep and external display clamshell mode should be enabled.
-
----
-
-## ⌨️ Built-in Shortcuts & Ergonomic Recommendations (常用内置快捷键与人机工学推荐)
-
-| 功能类别 | Omarchy 默认快捷键 | 人机工学痛点与现状分析 | 推荐好按组合键 | 对应肌肉记忆 | 冲突处理建议 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **剪贴板历史** | `SUPER + CTRL + V` | 左手小指与拇指跨度较大，单手盲按容易变形疲倦 | **`SUPER + SHIFT + Z`** | **Alfred / Raycast (`Cmd+Shift+Z`)** | 无冲突，原生键位闲置，直接绑定 |
-| **区域截图** | `PRINT` / `F12` / 无 | 缺少顺手且符合国内/跨平台习惯的单手组合键 | **`SUPER + CTRL + A`** | **微信 / Snipaste (`Ctrl+Alt+A`)** | 默认被音频占用，需 `hl.unbind("SUPER + CTRL + A")` |
-| **区域截图 (Mac)** | `PRINT` / `F12` | 苹果转 Linux 用户找不到最习惯的 `Cmd+Shift+4` | **`ALT + SHIFT + 4`** | **macOS 原生 (`Cmd+Shift+4`)** | 无冲突，直接绑定至 `omasnap` |
-| **通用复制** | `SUPER + C` | 已完美支持 GUI 应用与终端自动适配 | `SUPER + C` (保持) | macOS 原生 (`Cmd+C`) | 保持默认 |
-| **通用粘贴** | `SUPER + V` | 已完美支持 GUI 应用与终端自动适配 | `SUPER + V` (保持) | macOS 原生 (`Cmd+V`) | 保持默认 |
-| **应用启动 / 搜索** | `SUPER + SPACE` | 响应迅速，全局居中聚焦搜索 | `SUPER + SPACE` (保持) | macOS Spotlight / Raycast | 保持默认 |
-| **系统控制 (电源)** | `SUPER + ESCAPE` | 一键唤出锁屏、休眠、注销、关机面板 | `SUPER + ESCAPE` (保持) | macOS 苹果左上角系统菜单 | 保持默认 |
-| **关闭当前窗口** | `SUPER + W` | 快速单手关闭当前窗口 | `SUPER + W` (保持) | macOS 原生 (`Cmd+W`) | 保持默认 |
-| **即时计算器** | `SUPER + CTRL + Q` | 轻量弹窗计算器 `omacalc`，按键集中在左上 | `SUPER + CTRL + Q` (保持) | Spotlight 快速数学计算 | 保持默认 |
-| **Emoji 拾取** | `SUPER + CTRL + E` | 快捷检索与插入 Emoji 和特殊符号 | `SUPER + CTRL + E` (保持) | macOS (`Cmd+Ctrl+Space`) | 保持默认 |
-| **音频控制面板** | `SUPER + CTRL + A` | 属于低频控制面板，但占用了极佳的截屏指法 | 建议解绑释放给截图 | 通过系统菜单或托盘调节 | 优先推荐解绑，腾出黄金热键 |
-| **启动器与输入法互换** | `SUPER + SPACE` (启动器) / `CTRL + SPACE` (输入法) | 现代 macOS 用户习惯用 `Cmd + Space` 切换输入法，用 `Ctrl + Space` 打开聚焦 | **`SUPER + SPACE` (输入法) / `CTRL + SPACE` (启动器)** | **现代 macOS 切换输入法习惯** | Hyprland 释放 `SUPER + SPACE` 绑 `CTRL + SPACE`，Fcitx5 设为 `Super+space` |
-
----
-
-## ⚡ Quick Start (Automated Setup & Auditing)
-
-### 1. Run the Shortcut Auditor & Ergonomic Tool
-To inspect current shortcuts, view ergonomic recommendations, and interactively configure shortcuts with explicit confirmation:
+Install/discover with the standard skills CLI:
 
 ```bash
-bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
+npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
 ```
 
-### 2. Run the Full MacBook Behavior Setup Script
-To configure the complete trackpad, power, input method, and shortcut environment:
+## Confirmation First
+
+Before applying any change, inspect the actual configuration and ask for the user's choices. Do not silently choose scrolling, shortcuts, languages, tap behavior, idle timeouts or lid policy.
+
+1. Run the read-only auditor: `bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh`. It prints live `hyprctl binds -j`, then a clearly labeled snapshot table. Review custom bindings and gesture definitions too; a source excerpt alone is not an effective-binding audit.
+2. Choose **natural**, **traditional**, or **keep trackpad**. Natural scrolling moves content with the fingers; traditional reverses that direction. Selecting either direction opts into three-finger drag, disable-while-typing, and the replacement gesture scheme described below. Existing acceleration, tap/click choices and terminal scroll factors remain unchanged.
+3. Choose screenshot **keep**, **Super+Ctrl+A**, **Alt+Shift+4**, or **both**. Super+Ctrl+A replaces Audio by default; any chosen chord can replace a personal binding. Alt+Shift+4 is an alternative chord, not the physical equivalent of macOS Cmd+Shift+4.
+4. Choose clipboard **keep** or add **Super+Shift+Z**. This is an optional alias, not a universal Alfred default; check personal conflicts. The native Super+Ctrl+V binding is not removed.
+5. Discuss language and power changes separately if requested. Setup does not install packages or alter Fcitx, Rime, system services, udev, logind or shell timers.
+
+## Quick Start
+
+Run from the repository root, adjusting the path if installed elsewhere:
 
 ```bash
-# Interactive setup (prompts for scroll direction, screenshot hotkey, and clipboard shortcut)
+# Read-only, even on a TTY:
+bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
+
+# Interactive: every missing preference requires a choice, then confirmation.
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 
-# Or with explicit flags:
-bash skills/omarchy-macbook-behavior/scripts/setup.sh --natural-scroll --screenshot-hotkey super-ctrl-a
+# Explicit automation: ALL three preference categories are mandatory.
+bash skills/omarchy-macbook-behavior/scripts/setup.sh \
+  --natural-scroll --screenshot-hotkey alt-shift-4 --clipboard-hotkey super-shift-z
+
+# Keep trackpad and screenshot behavior; add only a clipboard alias:
+bash skills/omarchy-macbook-behavior/scripts/setup.sh \
+  --keep-trackpad --screenshot-hotkey keep --clipboard-hotkey super-shift-z
+
+# Shortcut-only on the legacy release; preserve personal input.lua:
+bash skills/omarchy-macbook-behavior/scripts/setup.sh \
+  --keep-trackpad --screenshot-hotkey super-ctrl-a --clipboard-hotkey super-shift-z
 ```
 
----
+Trackpad flags: `--natural-scroll`, `--traditional-scroll`, `--keep-trackpad`. Screenshot values: `keep`, `super-ctrl-a`, `alt-shift-4`, `both`. Clipboard values: `keep`, `super-shift-z`. Unknown arguments, missing values, invalid choices and incomplete noninteractive invocations fail before writes. Explicit complete flags constitute consent; an agent must still obtain the user's preferences first.
 
-## 🛠️ Step-by-Step Manual Setup
+### Screenshot Command Detection
 
-### 1. Configure Hyprland Trackpad (MacBook Behavior)
+When a screenshot shortcut is requested, setup resolves the actual executable wrapper on `PATH` with `type -P omarchy-capture-screenshot` and reads that file without running screenshot commands to probe capabilities. `${OMARCHY_PATH:-/usr/share/omarchy}` is installation context only; its same-named source may differ from the command on `PATH` and is not authoritative for detection:
 
-Edit `~/.config/hypr/input.lua`:
+- If it finds a line-leading `omasnap ...` or `exec omasnap ...` command invocation in the resolved executable, it selects `omarchy-capture-screenshot`. Comments, names inside arguments and the `omasnap_args` variable do not count as invocations.
+- For an actual wrapper using legacy grim/tensaku, an unrecognized or unreadable wrapper, or no executable wrapper on `PATH`, it selects the installed bare command `omasnap` on `PATH`, without `--notify`, `--save` or other arguments. It does not fall back to the old screenshot workflow.
+- Both paths require an executable `omasnap` on `PATH`. Missing required commands cause an error before any writes, never a silently omitted screenshot binding. Screenshot `keep` needs neither tool.
+
+Setup prints exactly `Screenshot command: omarchy-capture-screenshot` or `Screenshot command: omasnap`. The newer wrapper supplies notification and screenshot-directory compatibility; the direct path uses the installed omasnap's own preview, saving and directory behavior, which is not guaranteed to match the newer wrapper.
+
+### Managed Integration
+
+Setup preserves `input.lua`, `bindings.lua` and other personal modules. It backs up changed files using unique `.macbook-backup.*` filenames, then manages only `macbook_behavior.lua` and two marked blocks in `~/.config/hypr/hyprland.lua`:
 
 ```lua
--- MacBook (Apple Multi-Touch Trackpad bcm5974) Ergonomics & Gesture Tuning
-hl.config({
-  input = {
-    -- Hardware acceleration profile for smooth pointer feel
-    sensitivity = 0,
-    accel_profile = "adaptive",
-
-    touchpad = {
-      -- Palm rejection: Disable trackpad while typing on keyboard
-      disable_while_typing = true,
-
-      -- Scrolling direction:
-      -- natural_scroll = false (Traditional: 2 fingers swipe UP moves page UP)
-      -- natural_scroll = true  (Natural: 2 fingers swipe UP moves page DOWN)
-      natural_scroll = false,
-
-      -- Left-click-and-drag with three fingers (macOS Accessibility style)
-      drag_3fg = 1,
-
-      -- Clickfinger mapping (1 finger = Left, 2 fingers = Right, 3 fingers = Middle)
-      clickfinger_behavior = true,
-
-      -- Tap to click (soft touch)
-      tap_to_click = true,
-
-      -- Single-finger double tap and drag
-      tap_and_drag = true,
-
-      -- Fine-tuned macOS-like smooth scrolling factor
-      scroll_factor = 0.45,
-
-      -- Clean two-finger right click without middle-click confusion
-      middle_button_emulation = false,
-    },
-  },
-
-  gestures = {
-    -- Fluid macOS-like workspace swipe physics
-    workspace_swipe_distance = 300,
-    workspace_swipe_cancel_ratio = 0.3,
-    workspace_swipe_min_speed_to_force = 15,
-    workspace_swipe_direction_lock = true,
-    workspace_swipe_direction_lock_threshold = 10,
-  },
-
-  misc = {
-    -- Instant display wake upon touching trackpad or keyboard
-    key_press_enables_dpms = true,
-    mouse_move_enables_dpms = true,
-  },
-})
-
--- Terminal-specific scroll speeds
-o.window("(Alacritty|kitty|foot)", { scroll_touchpad = 1.4 })
-o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
-
--- macOS Multi-Finger Trackpad Gestures
--- 4-finger horizontal swipe: Smoothly switch workspaces (coexists with 3-finger drag)
-hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
-
--- 4-finger swipe up: Toggle scratchpad / special workspace (Mission Control style)
-hl.gesture({
-  fingers = 4,
-  direction = "up",
-  action = function()
-    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
-  end,
-})
-
--- 4-finger swipe down: Dismiss / toggle scratchpad
-hl.gesture({
-  fingers = 4,
-  direction = "down",
-  action = function()
-    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
-  end,
-})
-
--- 4-finger pinch in: Launchpad / Application launcher (omarchy-menu)
-hl.gesture({
-  fingers = 4,
-  direction = "pinchin",
-  action = function()
-    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
-  end,
-})
+-- BEGIN omarchy-macbook-behavior gestures
+omarchy_default_gestures = false
+-- END omarchy-macbook-behavior gestures
+require("default.hypr.omarchy")
+-- ... existing personal modules and other configuration remain unchanged ...
+-- BEGIN omarchy-macbook-behavior overrides
+require("hypr.macbook_behavior")
+-- END omarchy-macbook-behavior overrides
 ```
 
-Reload Hyprland:
+The early block is installed only when trackpad changes are selected. The override loads last, after personal configuration. Identical reruns make no further edits/backups; changed preferences replace this skill's prior generated choices. **`keep` means remove that category's previous skill-managed overrides and leave personal/upstream behavior alone**, not freeze a previously generated choice. All-keep is a neutral generated override. Setup refuses symlinked target files and an existing override without its ownership header. Preserve that header and use reruns for preferences; manual customizations belong in separate personal files.
+
+The script does not explicitly reload Hyprland, but Hyprland may auto-reload on writes. Review and test immediately in the session:
+
 ```bash
 hyprctl reload
+hyprctl configerrors
+hyprctl binds -j
 ```
 
-#### Fix Built-in Apple Trackpad Palm Rejection (DWT)
-By default, Linux udev rules classify Apple internal USB trackpads (`bcm5974`) as `ID_INPUT_TOUCHPAD_INTEGRATION=external`. Because `libinput` disables Disable-While-Typing (DWT) on external touchpads, palm rejection fails to activate even with `disable_while_typing = true`.
+### Existing Installations
 
-To ensure libinput pairs the trackpad with the internal keyboard and enables palm rejection:
+Earlier versions of this skill overwrote `input.lua`, appended direct `omasnap`/F12 bindings, wrote Fcitx/Rime files, and optionally installed system overrides. **The new setup does not undo those changes automatically.** Back up and review them first; restore your own pre-skill backups where appropriate, not somebody else's defaults.
 
-Create `/etc/udev/rules.d/71-apple-trackpad-internal.rules`:
-```udev
-# Fix Apple MacBook internal trackpad falsely classified as external USB device.
-# This ensures libinput enables palm rejection (Disable-While-Typing) paired with the internal keyboard.
-ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", ENV{ID_USB_DRIVER}=="bcm5974", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"
-```
+- Remove old gesture registrations from personal files before enabling the new scheme. Setup rejects obvious `hl.gesture` definitions in `input.lua`, but cannot discover every indirect module, alias or dynamically created gesture; inspect the full load graph.
+- Remove legacy `no_screen_share` rules matching `omasnap`, including those in other modules. They break scrolling capture. The installer flags the common legacy case in `bindings.lua`, not every possible rule.
+- Review old screenshot bindings and select the command by capability as above: `omarchy-capture-screenshot` for the newer wrapper, or `omasnap` for a legacy wrapper with the standalone tool installed. Do not force the grim/tensaku workflow on older machines. Remove old F12 mappings only if the user wants that; F12 is not a current upstream screenshot default.
+- Preserve/restore Fcitx profiles, language engines, Rime customizations and personal dictionaries. Group-cycling bindings in a one-group profile never cycled its engines correctly. Review old Super+Space/Control+Space IME overrides against the native behavior below.
+- Review any old `/etc` drop-ins or udev rules manually; this installer neither installs nor deletes them.
 
-Reload and trigger udev:
-```bash
-sudo udevadm control --reload && sudo udevadm trigger -s input
-```
+## Manual Trackpad and Shortcuts
 
----
+Back up `hyprland.lua` and any file to be edited. When selecting the replacement trackpad scheme, set `omarchy_default_gestures = false` **before** the defaults import, then load a separate override at the end of `hyprland.lua`. Copy only the desired settings from [hyprland-input.lua](references/hyprland-input.lua), choosing `natural_scroll` explicitly. Do not replace `input.lua` wholesale. For shortcut-only changes, add no trackpad settings, gestures or early disable flag.
 
-### 2. Configure Sleep, Lid-Close & Clamshell Mode
+The reviewed newer `quattro` default uses three fingers for workspace/menu/console gestures and four fingers for moving windows/fullscreen. These conflict with three-finger drag and this skill's four-finger registrations; the live 4.0.6-1 install above lacks that default gesture module and has no such upstream conflict. The early flag disables all upstream default gestures on newer builds, not personal ones. For selective manual changes, the verified API is `hl.gesture({ fingers = 3, direction = "up", action = "unset" })`; unset every conflicting direction before redefining it. Do not assume adding a duplicate gesture overrides the earlier registration.
 
-#### A. Set Logind Inhibit Delay
-Ensure display locking finishes before hardware sleep:
+The supplied replacement scheme is:
 
-Create `/etc/systemd/logind.conf.d/20-inhibit-delay.conf`:
-```ini
-[Login]
-InhibitDelayMaxSec=15
-```
+| Gesture | Action |
+| --- | --- |
+| Three-finger movement | Left-button drag via `drag_3fg = 1` |
+| Four-finger horizontal swipe | Switch workspace |
+| Four-finger up/down | Toggle the `scratchpad` special workspace |
+| Four-finger pinch-in | Open Omarchy menu |
 
-#### B. Idle & Auto-Lock Timers
-In `~/.config/omarchy/shell.json`, set balanced macOS-style idle timeouts:
-```json
-{
-  "idle": {
-    "screensaver": 150,
-    "lock": 300
-  }
-}
-```
+Scratchpad is a special workspace, not macOS Mission Control. Hardware support and drag feel require real-device testing. `disable_while_typing = true` requests libinput behavior; it cannot guarantee palm rejection on every device. Keep upstream acceleration and scroll factors unless the user separately requests tuning; optional tap/click, speed and wake settings can be customized in personal input configuration after confirmation.
 
-#### C. Clamshell & Lid Switch Hooks
-In `~/.config/hypr/bindings.lua` (or via Omarchy defaults), verify lid switch triggers:
-```lua
-o.bind("switch:on:Lid Switch", nil, "omarchy-system-lid-close", { locked = true })
-o.bind("switch:off:Lid Switch", nil, "omarchy-hyprland-monitor-clamshell", { locked = true })
-```
+For shortcut-only manual changes, choose examples from [hyprland-bindings.lua](references/hyprland-bindings.lua), unbind the selected chord, then bind through `o.bind`. Select **`omarchy-capture-screenshot` or bare `omasnap`** using the detection above; do not assume a same-named wrapper invokes the same tool on every release. Leave native Print/Super+Ctrl+Alt+C alone unless explicitly asked. No extra overlay rule is needed; never add `no_screen_share` for `omasnap`.
 
----
+## Optional Input Methods
 
-### 3. Configure Screenshot Shortcuts (`omasnap`)
-
-Omarchy uses `omasnap` as the overlay screenshot utility. Edit `~/.config/hypr/bindings.lua` to configure your preferred shortcut mapping:
-
-#### Option A: `SUPER + CTRL + A` (Snipaste / WeChat Style - Recommended)
-> [!NOTE]
-> Omarchy by default maps `SUPER + CTRL + A` to the Audio control menu (`omarchy-shell shell toggle omarchy.audio`). To use `SUPER + CTRL + A` for screenshots, unbind it first using `hl.unbind("SUPER + CTRL + A")`.
-
-```lua
--- Omasnap screenshot overlay (SUPER + CTRL + A)
-hl.unbind("PRINT")
-hl.unbind("F12")
-hl.unbind("SUPER + CTRL + A") -- Free up default Audio panel shortcut
-
-o.bind("PRINT", "Screenshot", "omasnap")
-o.bind("F12", "Screenshot", "omasnap")
-o.bind("SUPER + CTRL + A", "Screenshot", "omasnap")
-
-hl.layer_rule({
-  match = { namespace = "^omasnap$" },
-  no_anim = true,
-  animation = "none",
-  no_screen_share = true,
-})
-```
-
-#### Option B: `ALT + SHIFT + 4` (macOS `Cmd + Shift + 4` Style)
-
-```lua
--- Omasnap screenshot overlay (macOS Cmd+Shift+4 style)
-hl.unbind("PRINT")
-hl.unbind("F12")
-hl.unbind("ALT + SHIFT + 4")
-
-o.bind("PRINT", "Screenshot", "omasnap")
-o.bind("F12", "Screenshot", "omasnap")
-o.bind("ALT + SHIFT + 4", "Area Screenshot (macOS Cmd+Shift+4)", "omasnap")
-
-hl.layer_rule({
-  match = { namespace = "^omasnap$" },
-  no_anim = true,
-  animation = "none",
-  no_screen_share = true,
-})
-```
-
----
-
-### 4. Configure Clipboard History (`SUPER + SHIFT + Z` Alfred Parity)
-
-In Omarchy:
-- <kbd>Super</kbd> + <kbd>C</kbd> and <kbd>Super</kbd> + <kbd>V</kbd> provide universal copy and paste (like macOS <kbd>Cmd</kbd> + <kbd>C</kbd> / <kbd>Cmd</kbd> + <kbd>V</kbd>).
-- The default clipboard history shortcut is <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd>.
-
-To replicate Alfred's clipboard history shortcut (<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> $\rightarrow$ <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd>), append the following to `~/.config/hypr/bindings.lua`:
-
-```lua
--- Clipboard history (Alfred style Super + Shift + Z)
-hl.unbind("SUPER + SHIFT + Z")
-o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")
-```
-
-Reload Hyprland to apply:
-```bash
-hyprctl reload
-```
-
----
-
-### 5. Install & Configure Fcitx5 (Chinese + Japanese)
-
-#### Install Packages
-```bash
-sudo pacman -S --needed --noconfirm \
-  fcitx5 \
-  fcitx5-gtk \
-  fcitx5-qt \
-  fcitx5-configtool \
-  fcitx5-rime \
-  fcitx5-mozc \
-  git
-```
-
-#### Configure Input Method Profile
-Create `~/.config/fcitx5/profile`:
-
-```ini
-[Groups/0]
-Name=Default
-Default Layout=us
-DefaultIM=rime
-
-[Groups/0/Items/0]
-Name=keyboard-us
-Layout=
-
-[Groups/0/Items/1]
-Name=rime
-Layout=
-
-[Groups/0/Items/2]
-Name=mozc
-Layout=
-
-[GroupOrder]
-0=Default
-```
-
-#### Configure macOS Shortcuts & Behavior
-Create `~/.config/fcitx5/config`:
-
-```ini
-[Hotkey]
-EnumerateWithTriggerKeys=True
-EnumerateForwardKeys=
-EnumerateBackwardKeys=
-EnumerateSkipFirst=False
-ModifierOnlyKeyTimeout=250
-
-[Hotkey/TriggerKeys]
-0=Control+space
-1=Zenkaku_Hankaku
-2=Hangul
-
-[Hotkey/AltTriggerKeys]
-# Single Shift tap to switch between English and Chinese
-0=Shift_L
-
-[Hotkey/EnumerateGroupForwardKeys]
-0=Super+space
-
-[Hotkey/EnumerateGroupBackwardKeys]
-0=Shift+Super+space
-
-[Hotkey/PrevPage]
-0=Up
-
-[Hotkey/NextPage]
-0=Down
-
-[Hotkey/PrevCandidate]
-0=Shift+Tab
-
-[Hotkey/NextCandidate]
-0=Tab
-
-[Behavior]
-ActiveByDefault=False
-resetStateWhenFocusIn=No
-# Independent input method state per window (macOS behavior)
-ShareInputState=No
-PreeditEnabledByDefault=True
-ShowInputMethodInformation=True
-CompactInputMethodInformation=True
-ShowFirstInputMethodInformation=True
-DefaultPageSize=5
-AutoSavePeriod=30
-```
-
----
-
-### 6. Deploy Rime-Ice (雾凇拼音) Schema
-
-Rime-Ice provides the most accurate and up-to-date Chinese Pinyin lexicon:
+Current Omarchy runs Fcitx under the **session user unit** `omarchy-fcitx5.service`. Inspect before changing anything:
 
 ```bash
-RIME_DIR="$HOME/.local/share/fcitx5/rime"
-mkdir -p "$RIME_DIR"
-
-# Clone rime-ice if not already present
-if [ ! -f "$RIME_DIR/rime_ice.schema.yaml" ]; then
-  TMP_DIR=$(mktemp -d)
-  git clone --depth 1 https://github.com/iDvel/rime-ice.git "$TMP_DIR"
-  cp -r "$TMP_DIR"/* "$RIME_DIR/"
-  rm -rf "$TMP_DIR"
-fi
-
-# Enable rime-ice patch in default config
-cat << 'EOF' > "$RIME_DIR/default.custom.yaml"
-patch:
-  __include: rime_ice_suggestion:/
-EOF
+omarchy-input-method status
+systemctl --user status omarchy-fcitx5.service
 ```
 
-Restart Fcitx5 to build lexicon dictionaries:
+Native **Super+I / Super+Shift+I** cycle input languages through Omarchy's shell. **Super+Space** opens the menu. **Ctrl+Space** is a non-consuming terminal-prefix helper that requests direct input in terminals; do not replace it with a consuming launcher/IME binding by default. Cmd+Space is commonly Spotlight on macOS, not a universal input-source toggle. Fcitx custom hotkeys may still exist on upgraded installs; inspect them instead of forcing new ones.
+
+Use `omarchy setup input` (or `omarchy-setup-input`) for the current native interactive configurator. Confirm languages and inspect the proposed package/configuration changes. Prefer its supported presets, including Japanese Mozc where available, over a replacement profile. Do not use reset/defaults options merely to add a language.
+
+For **Rime**, which may not be offered by the native preset picker:
+
+1. Confirm Chinese input and install only the needed package, e.g. `sudo pacman -S --needed fcitx5-rime`. Install an available configuration editor separately only if needed and confirmed.
+2. Back up the existing Fcitx profile/config. Use an available Fcitx input-method editor to **add Rime to the existing group**, preserving the current keyboard, other engines, order and custom hotkeys. Do not copy [fcitx5-profile](references/fcitx5-profile) or [fcitx5-config](references/fcitx5-config) over live files; these are guidance/examples only.
+3. For optional Rime-Ice, review its current upstream installation instructions, back up the Rime data directory (`${XDG_DATA_HOME:-~/.local/share}/fcitx5/rime`), and merge schemas/patches selectively. Do not clone over a live dictionary tree or replace existing `default.custom.yaml`. [rime-default.custom.yaml](references/rime-default.custom.yaml) is only an optional merge example after the schema is installed.
+4. Apply changes through the editor/redeploy Rime. If a restart is needed, use `systemctl --user restart omarchy-fcitx5.service`, not a second `fcitx5 -r -d` daemon. Test native cycling and terminal Ctrl+Space afterward. Do not promise native integration for manually added engines until tested on the installed version.
+
+Per-window input state, candidate paging and single-Shift toggling are separate user preferences, not prerequisites. Never overwrite the entire Fcitx configuration to set them. Cycling Fcitx **groups** with just one group does not cycle US/Rime/Mozc **engines** within it.
+
+## Optional Power Review
+
+No power changes are automated. Current upstream already ships `InhibitDelayMaxSec=15`; [logind-inhibit-delay.conf](references/logind-inhibit-delay.conf) is a snapshot reference, **not a drop-in to install**. This is a maximum inhibitor delay, not a guarantee that a lock screen rendered before suspend.
+
+Native lid bindings handle both `Lid Switch` and `Apple SMC power/lid events`, calling `omarchy-system-lid-close` and `omarchy-hyprland-monitor-clamshell`. Do not duplicate those bindings or Apple hooks. Battery/AC, external displays, dock state, inhibitors, firmware and wake devices can change observed behavior. Inspect the installed commands and logs instead of claiming sleep/clamshell was optimized.
+
+For idle timers, preserve the **complete canonical** `~/.config/omarchy/shell.json`. Current format requires **`"version": 1`**, and is not a deep-merge overlay; a tiny `{"idle": ...}` file can discard/reset unrelated bar, dock and plugin settings. The upstream defaults are already **screensaver 150 seconds / lock 300 seconds**. Only edit the requested fields in the existing full file after confirming durations. If missing, review the full installed template at `/usr/share/omarchy/config/omarchy/shell.json` first. Do not replace a customized file with the template.
+
+Useful read-only checks:
+
 ```bash
-fcitx5 -r -d 2>/dev/null || true
+systemd-analyze cat-config systemd/logind.conf
+systemd-inhibit --list
+hyprctl binds -j
+journalctl -b -u systemd-logind --no-pager
 ```
 
----
+Save work and explicitly obtain permission before testing actual suspend, lid-close or dock changes. Check lock behavior after wake on battery and with the intended external-display setup; do not infer security from the timeout alone.
 
-## 🔍 Verification & Testing
+## Hardware Diagnostics
 
-1. **Test Three-Finger Drag**:
-   - Place three fingers on the trackpad over any window titlebar or text block.
-   - Move your fingers without pressing down: the window should drag or text should highlight smoothly.
-2. **Test Palm Rejection**:
-   - Begin typing in a text field while resting your palm or brushing a finger across the trackpad: the cursor should stay stationary.
-3. **Test Sleep & Lid Close**:
-   - Close the laptop lid on battery $\rightarrow$ screen locks instantly and enters sleep.
-   - Connect an external display and close the lid $\rightarrow$ laptop screen turns off while external display stays awake (Clamshell mode).
-4. **Test Input Methods**:
-   - Press `Control + Space` $\rightarrow$ activates Rime (Chinese Pinyin).
-   - Press single `Shift` $\rightarrow$ toggles between English and Chinese inline.
-   - Press `Super + Space` $\rightarrow$ cycles to Mozc (Japanese) and English.
-5. **Test Area Screenshot (`omasnap`)**:
-   - Press `SUPER + CTRL + A` (or `ALT + SHIFT + 4`) $\rightarrow$ `omasnap` area selection overlay appears instantly without delay or window borders.
-6. **Test Clipboard History**:
-   - Press `SUPER + SHIFT + Z` $\rightarrow$ Omarchy clipboard manager popup appears, allowing you to browse past copied text and images and paste with <kbd>Enter</kbd>.
+Never install a udev override just because `bcm5974`/`applespi` is loaded. First identify the touchpad's actual event node with `libinput list-devices`, then inspect `udevadm info --query=property --name=/dev/input/eventN` and its hardware identity. These read-only diagnostics may require privilege on the installed system. Determine whether the device is genuinely internal, incorrectly classified external, and lacks expected disable-while-typing behavior.
 
----
+Only after that diagnosis and explicit opt-in, consider the [udev example](references/71-apple-trackpad-internal.rules). Narrow it with a verified device-specific parent match; the broad driver match alone is not safe for every machine and is not an Apple Silicon recipe. Back up any existing rule, install the reviewed scoped rule under `/etc/udev/rules.d/`, and apply it during an agreed maintenance/reboot window. Validate the properties and typing behavior again. Hardware classification is not a guaranteed palm-rejection fix.
 
-## 📁 Reference Files
+## Verification and Rollback
 
-- [`scripts/setup.sh`](./scripts/setup.sh) — All-in-one setup script.
-- [`scripts/recommend-shortcuts.sh`](./scripts/recommend-shortcuts.sh) — Shortcut auditor & interactive recommendation script.
-- [`references/hyprland-input.lua`](./references/hyprland-input.lua) — Hyprland trackpad settings.
-- [`references/71-apple-trackpad-internal.rules`](./references/71-apple-trackpad-internal.rules) — Apple internal trackpad udev rule (palm rejection / DWT fix).
-- [`references/hyprland-bindings.lua`](./references/hyprland-bindings.lua) — Screenshot, clipboard history (`SUPER + SHIFT + Z`), and hotkey bindings.
-- [`references/logind-inhibit-delay.conf`](./references/logind-inhibit-delay.conf) — Logind sleep delay configuration.
-- [`references/fcitx5-profile`](./references/fcitx5-profile) — Input method group profile.
-- [`references/fcitx5-config`](./references/fcitx5-config) — Hotkeys and behavior options.
-- [`references/rime-default.custom.yaml`](./references/rime-default.custom.yaml) — Rime-Ice patch config.
+- Run `hyprctl reload` and `hyprctl configerrors`; inspect errors, not just reload exit status.
+- Test three-finger text selection and window drag, all selected four-finger gestures, scroll direction and disable-while-typing on actual hardware.
+- Check the reported screenshot command and test selected shortcuts, annotation, notifications/preview supported by the selected path, and **scrolling capture**. The direct path does not promise newer-wrapper notification behavior. Ensure no inherited `omasnap` `no_screen_share` rule remains.
+- Test clipboard alias and existing native shortcuts; review `hyprctl binds -j` for conflicts.
+- For optional IME changes, test each engine, native forward/backward cycling, GUI/terminal composition and terminal-prefix passthrough. Check the user service rather than spawning a second daemon.
+- Repository checks: run `bash -n` on each script, then `bash skills/omarchy-macbook-behavior/scripts/test-setup.sh`. The sandbox tests use a temporary HOME, isolated `OMARCHY_PATH` and whitelisted utilities/mocked commands, covering newer wrappers, legacy direct invocation, version mismatches between `OMARCHY_PATH` and `PATH` in both directions, missing-tool/no-write failures and shortcut-only installation preserving the trackpad; they do not prove live Hyprland/hardware behavior.
+
+To disable this installer's choices, rerun with `--keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep`. To remove the integration completely, back up current files, remove only both marked blocks in `hyprland.lua`, then remove the managed `macbook_behavior.lua`. Restore a `.macbook-backup.*` file only after comparing it with current content so later personal edits are not lost. Reload and inspect configuration errors afterward. Legacy changes outside the managed blocks require separate manual rollback.

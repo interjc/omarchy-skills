@@ -6,7 +6,7 @@
 
 # Omarchy Skills 🧙‍♂️
 
-专为 **[Omarchy Linux](https://omarchy.org)** 量身定制的生产级 AI Agent 技能、系统定制与自动化工作流合集。
+专为 **[Omarchy Linux](https://omarchy.org)** 整理的 AI Agent 技能、用户级定制与自动化工作流合集。
 
 由 **Justin**（[@interjc](https://x.com/interjc) · [interjc.net](https://interjc.net)）创建并维护。
 
@@ -14,7 +14,7 @@
 
 ## 🌟 项目愿景
 
-**Omarchy Skills** 旨在将日常使用 Omarchy Linux 的进阶经验、系统配置技巧与桌面自动化实践，沉淀为开箱即用的模块化 AI Skills。AI 编程助手（如 Antigravity、Claude Code、Codex 等）能够直接发现、加载并执行这些技能，自动化完成复杂的系统集成，让你的 Omarchy 环境保持最佳状态。
+**Omarchy Skills** 将日常使用 Omarchy Linux 的配置经验与桌面工作流整理为模块化 AI Skills，供 Antigravity、Claude Code、Codex 等助手发现和使用。先检查已安装版本与个人配置，再确认偏好，只应用获准的改动。
 
 ---
 
@@ -35,67 +35,69 @@ npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
 
 ## 📚 Skills 技能目录
 
-| 技能名称 | 描述说明 | 状态 |
+| 技能名称 | 描述说明 | 验证范围 |
 | :--- | :--- | :--- |
-| [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL.md) | 在 Omarchy 中无缝将默认 Agent 替换为 Antigravity CLI (`agy`)，并支持状态栏实时额度监控。 | `v1.0.0` (稳定) |
-| [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL.md) | 贴合 MacBook / macOS 习惯的系统体验：三指拖拽、打字防误触、中/日/英输入法及快捷键。 | `v1.0.0` (稳定) |
+| [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL_ZH.md) | 按实际能力选择原生 `agy` 或经批准的旧版兼容；后台会话与额度栏为可选项。 | 沙盒测试；`4.0.6-1` 旧版映射、服务和配额实测 |
+| [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL_ZH.md) | 按确认偏好添加 Lua 触摸板与快捷键覆盖；输入法、电源及硬件诊断另行手动处理。 | 沙盒测试；`4.0.6-1` 快捷键加载和截图输出实测 |
+
+---
+
+## 兼容性与验证范围
+
+**2026-10-31 审计快照**：分别检查稳定标签 **`v4.0.6`** 与默认分支 **`quattro`** 的提交 **`bda3aaf6955404712dbd46541e6c8a75a2b16b7c`**，不将开发分支能力视为稳定版已发布功能。
+
+| 项目 | `v4.0.6` | 固定的 `quattro` 快照 |
+| :--- | :--- | :--- |
+| Agent 分发与默认值 | `gemini --yolo`；默认设置器拒绝 `agy` | 原生 `agy --dangerously-skip-permissions`；`gemini` 等别名归一为 `agy` |
+| 默认菜单条目 | `setup.default.agent.gemini` | `setup.default.agent.agy` |
+| 截图入口 | 实机包装器仍为旧截图流程，保留已安装的 `omasnap` | 官方包装器调用 Omasnap，优先使用包装器 |
+| Hyprland 工作流 | 不具备快照中的默认手势开关及原生输入法键位 | MacBook 自动化以此 Lua 配置为目标；旧 `.conf` 配置需单独审查 |
+
+固定上游依据：[稳定版分发器](https://github.com/basecamp/omarchy/blob/v4.0.6/bin/omarchy-agent)、[默认设置器](https://github.com/basecamp/omarchy/blob/v4.0.6/bin/omarchy-default-agent)；[快照分发器](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/bin/omarchy-agent)、[默认设置器](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/bin/omarchy-default-agent)、[Lua 默认模块](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/default/hypr/omarchy.lua)、[桌面键位](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/default/hypr/bindings/utilities.lua)、[输入法键位](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/default/hypr/bindings/input-method.lua)。
+
+已完成源码审查、Shell/Lua 语法检查及临时 `HOME`/模拟命令的沙盒测试，并在获准的 `4.0.6-1` 实机上执行两项安装器，验证旧版 Agent 分发、服务初始化、独立缓存配额查询、快捷键加载和非全黑 PNG 输出。手势手感、滚动长截图、完整输入法交互、睡眠安全及 `quattro` 原生桌面仍未实测；这不是全功能稳定性认证。环境、执行命令、备份和明确边界见[双语验证记录](VALIDATION_ZH.md)。
 
 ---
 
 ## 🚀 精选技能详情
 
-### 1. `omarchy-agent-agy` — Antigravity Agent 与状态栏集成
+### 1. `omarchy-agent-agy`：Antigravity Agent 与可选额度栏
 
-> **目标**：在 Omarchy 的系统 Agent 白名单、Quickshell 菜单、Hyprland 快捷键以及顶部状态栏中，无缝将旧版 `gemini` 替换为 Google Antigravity CLI (`agy`)。
+> **目标**：优先使用 Omarchy 原生 Antigravity CLI (`agy`) 支持，仅在检测到已知旧版且用户批准后使用 Gemini Shim。
 
 #### 核心亮点
-- **无侵入式 Agent 映射**：在 `~/.local/bin/gemini` 部署透明包装脚本（Shim），自动转换命令行参数（`--yolo` → `--dangerously-skip-permissions`、`-i`、`-p`）并调起 `agy`，不怕系统升级覆盖。
-- **Quickshell 菜单文本定制**：在设置菜单（`SUPER + SPACE`）中显示 **"Antigravity (agy)"** 与对应图标 `󰫢`。
-- **状态栏全天候额度监控 (`ai-usagebar`)**：配置轻量级 `systemd` 用户守护进程（`agy-daemon.service`，`stream-json` 模式，零空闲 CPU 占用），无需前台常开终端即可通过 RPC 查询配额。
+- **先检测、后选择**：读取已安装分发器与设置器的实际能力；原生路径使用 `omarchy-default-agent agy`，旧版 Shim 需单独批准，未知实现拒绝猜测。原生分发与旧版 Shim 均会跳过 Agent 权限提示。
+- **安装范围明确**：仅处理获准的默认 Agent 映射与可选用户服务，不改菜单、快捷键、额度栏配置或 `shell.json`，不写 `/usr/share/omarchy/` 或 `/etc`。原生设置器可能通过 mise 安装工具并启动终端；`agy` 安装与认证须先检查。
+- **实验性后台会话**：`stream-json` 用户服务单独选择启用；不保证额度接口、持续在线、零 CPU 或固定内存占用，服务运行不等于额度查询成功。
+- **手动可选集成**：`ai-usagebar` 包、插件、完整状态栏布局及旧版菜单改名需分别审查和批准，按技能文档合并，不能直接覆盖个人配置。保留原生 `SUPER + SHIFT + CTRL + A` → `omarchy-agent --pick`。
 
 ```bash
+# 交互式确认默认 Agent 与后台服务；非交互运行须显式指定两项选择
 bash skills/omarchy-agent-agy/scripts/setup.sh
 ```
 
 ---
 
-### 2. `omarchy-macbook-behavior` — MacBook 人体工学与习惯定制
+### 2. `omarchy-macbook-behavior`：MacBook 触摸板与快捷键偏好
 
-> **目标**：让 Omarchy Linux 的触摸板手势、输入法交互与桌面快捷键全面贴近 macOS / MacBook 经典使用习惯。
+> **目标**：在现有 Omarchy 桌面上添加小范围、可选的触摸板与快捷键覆盖，不替换桌面栈，也不保证复刻 macOS。
 
 #### 核心亮点
-- **触摸板人体工学与手势**：
-  - **三指拖拽 (`drag_3fg = 1`)**：无缝还原 macOS 辅助功能的三指拖移，选中文本与移动窗口无需用力按压。
-  - **打字防误触 (`disable_while_typing = true`)**：键盘打字时自动禁用触摸板，彻底避免掌心误触光标乱跳。
-  - **自然滚动 (`natural_scroll = true`)**：滚轮方向与 macOS 触控板完全一致。
-  - **轻触点击与点按手势**：单指左键、双指右键、三指中键。
-- **macOS 多语言输入法生态 (Fcitx5 + 雾凇拼音 + Mozc)**：
-  - **中文**：`fcitx5-rime` 深度集成 **Rime-Ice (雾凇拼音)** 词库。
-  - **日语**：`fcitx5-mozc` (Google 日语输入法引擎)。
-  - **快捷键对齐**：`Control + Space` 切换输入法，单按左 `Shift` 即时中英文切换，`Super + Space` 循环切换输入法组。
-  - **独立窗口状态 (`ShareInputState = No`)**：各应用窗口独立记忆中英文状态。
-- **MacBook 级电源与睡眠管理 (合盖即走 & 蛤壳模式)**：
-  - **合盖即走**：笔记本合盖即刻安全锁屏并挂起睡眠，按键/触摸即刻秒醒。
-  - **蛤壳外接屏模式 (Clamshell)**：外接显示器时合盖不休眠，无缝关闭内屏并转移主显示输出。
-  - **Logind 锁屏延迟保护 (`InhibitDelayMaxSec=15`)**：确保显示安全锁屏彻底完成后再进入硬件睡眠。
-- **截图工具与自定义快捷键 (`omasnap`)**：
-  - 基于 Wayland 零延迟图层截图工具 `omasnap`，支持区域选择、贴图、标注与剪贴板复制。
-  - **微信 / Snipaste 习惯 (`SUPER + CTRL + A`)**：自动解绑 Omarchy 默认占用的低频音频控制菜单，彻底消除热键冲突。
-  - **macOS 经典习惯 (`ALT + SHIFT + 4`)**：完美对齐 Mac 原生 `Cmd + Shift + 4` 截图手感。
-- **Alfred 习惯剪贴板历史与快捷键**：
-  - **通用复制粘贴**：`Super + C` / `Super + V` 系统级全局对齐 macOS `Cmd + C` / `Cmd + V`。
-  - **Alfred 剪贴板历史 (`SUPER + SHIFT + Z`)**：复刻 Alfred `Cmd + Shift + Z` 肌肉记忆快速唤出剪贴板历史管理器（`omarchy.clipboard`），支持图文预览搜索与回车一键粘贴。
-- **内置快捷键审计与人机工学推荐引擎**：
-  - 内置快速审计脚本（`recommend-shortcuts.sh`），自动对比系统常用内置快捷键与痛点分析。
-  - 严格遵循「查询当前键位 $\rightarrow$ 推荐舒适组合 $\rightarrow$ 用户确认后再修改」的 3 步原则。
+- **偏好先行**：选择自然滚动、传统滚动或保留触摸板，再分别选择截图与剪贴板快捷键；终端中交互确认，非交互必须提供全部选择。
+- **托管 Lua 覆盖**：选择滚动方向同时启用三指拖拽、打字时禁用触摸板及替代四指手势，并关闭上游默认手势。仅管理独立模块及入口中的标记块，备份改动，保留个人 `input.lua`/`bindings.lua`；手感和防误触仍依赖硬件验证。
+- **先审计键位**：只读脚本区分实时绑定与上游快照。快照默认截图为 `Print` / `SUPER + CTRL + ALT + C`（不是 F12），剪贴板历史为 `SUPER + CTRL + V`；可选 `SUPER + CTRL + A` 截图会替换音频键，`ALT + SHIFT + 4` 是替代组合，`SUPER + SHIFT + Z` 仅为可选剪贴板别名。检查 PATH 中实际截图包装器，确认调用 Omasnap 才使用 `omarchy-capture-screenshot`，旧版否则保留已安装的 `omasnap`。
+- **输入法另行确认**：快照原生 `SUPER + I` / `SUPER + SHIFT + I` 切换输入语言，`SUPER + SPACE` 打开菜单，`CTRL + SPACE` 保留为不吞键的终端前缀辅助。Mozc 优先用原生配置器；Rime/雾凇按需手动合并，组切换不等于组内引擎切换。
+- **不是全套安装器**：不安装软件包、不写系统目录、不配置 Fcitx/Rime、电源、udev、logind 或空闲定时器。合盖与外接屏优先检查原生行为；手动可选步骤需单独诊断与批准，旧版技能遗留改动不会自动撤销。
 
 ```bash
-# 快捷键审计与交互式推荐
+# 只读快捷键审计
 bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
 
-# 完整环境安装
+# 仅配置确认后的触摸板与快捷键偏好
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 ```
+
+以上脚本路径以仓库根目录为准；通过 skills CLI 安装后，请从实际安装的技能目录运行 `scripts/setup.sh`。完整选项、手动步骤、验证与回滚见各 `SKILL.md`。
 
 ---
 

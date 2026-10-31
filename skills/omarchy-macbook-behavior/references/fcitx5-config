@@ -1,55 +1,10 @@
-[Hotkey]
-EnumerateWithTriggerKeys=True
-EnumerateForwardKeys=
-EnumerateBackwardKeys=
-EnumerateSkipFirst=False
-ModifierOnlyKeyTimeout=250
-
-[Hotkey/TriggerKeys]
-# macOS Control+Space trigger
-0=Control+space
-1=Zenkaku_Hankaku
-2=Hangul
-
-[Hotkey/AltTriggerKeys]
-# macOS Single Left Shift toggle for Chinese/English
-0=Shift_L
-
-[Hotkey/EnumerateGroupForwardKeys]
-# macOS Super+Space (Cmd+Space) group cycle
-0=Super+space
-
-[Hotkey/EnumerateGroupBackwardKeys]
-0=Shift+Super+space
-
-[Hotkey/PrevPage]
-0=Up
-
-[Hotkey/NextPage]
-0=Down
-
-[Hotkey/PrevCandidate]
-0=Shift+Tab
-
-[Hotkey/NextCandidate]
-0=Tab
-
-[Hotkey/TogglePreedit]
-0=Control+Alt+P
-
-[Behavior]
-ActiveByDefault=False
-resetStateWhenFocusIn=No
-# Independent input state per window (macOS behavior)
-ShareInputState=No
-PreeditEnabledByDefault=True
-ShowInputMethodInformation=True
-showInputMethodInformationWhenFocusIn=False
-CompactInputMethodInformation=True
-ShowFirstInputMethodInformation=True
-DefaultPageSize=5
-OverrideXkbOption=False
-PreloadInputMethod=True
-AllowInputMethodForPassword=False
-ShowPreeditForPassword=False
-AutoSavePeriod=30
+# Guidance only, NOT a replacement ~/.config/fcitx5/config.
+# Preserve your current hotkeys and behavior settings; use native setup when possible.
+# Current Omarchy cycles languages with Super+I / Super+Shift+I independently of
+# Fcitx trigger keys. Ctrl+Space is a non-consuming terminal direct-input helper.
+# Do not add Control+space as an IME trigger without resolving terminal conflicts.
+# Super+Space belongs to the Omarchy menu, not a default IME shortcut.
+# A one-group profile cannot cycle its engines by cycling groups.
+# Optional per-window input state: merge ShareInputState=No into an EXISTING
+# [Behavior] section only after confirming that preference; do not replace the file.
+# Single Shift toggling is optional engine/user behavior, not macOS parity.

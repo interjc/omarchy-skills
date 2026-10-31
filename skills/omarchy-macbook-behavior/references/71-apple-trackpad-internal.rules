@@ -1,3 +1,6 @@
-# Fix Apple MacBook internal trackpad falsely classified as external USB device.
-# This ensures libinput enables palm rejection (Disable-While-Typing) paired with the internal keyboard.
+# MANUAL DIAGNOSTIC EXAMPLE ONLY; never installed automatically.
+# Use only after confirming an INTERNAL bcm5974 touchpad is misclassified external.
+# Narrow to the diagnosed device using a verified ATTRS{...} match before installing.
+# A driver name alone does not prove a device is internal; this is not for Apple Silicon.
+# Integration classification may enable DWT pairing, but does not guarantee palm rejection.
 ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", ENV{ID_USB_DRIVER}=="bcm5974", ENV{ID_INPUT_TOUCHPAD_INTEGRATION}="internal", ENV{ID_INTEGRATION}="internal"

@@ -1,518 +1,212 @@
 ---
 name: omarchy-agent-agy
-description: Complete guide and automation for seamlessly integrating Google Antigravity CLI (agy) as Omarchy Linux's default AI coding agent and live status bar quota monitor. Includes transparent wrapper shimming, Quickshell menu customization, Hyprland shortcuts, and a 24/7 zero-CPU headless systemd daemon for status bar quota tracking without keeping a terminal open.
+description: Integrate Antigravity CLI (agy) with Omarchy, preferring native default-agent support and using an approved Gemini shim only on detected legacy installations. Includes an optional experimental background session and manual usage-bar configuration.
 ---
 
-# Omarchy Agent: Antigravity CLI (`agy`) Full Integration Guide
+[English](SKILL.md) | [简体中文](SKILL_ZH.md)
 
-This skill provides the comprehensive architecture, configuration, and automation recipes to seamlessly integrate **Google Antigravity CLI (`agy`)** into **Omarchy Linux**.
+# Omarchy Agent: Antigravity CLI
 
----
+## Audit Evidence And Architecture
 
-## 🎯 Objectives & Deliverables
+Audited on **2026-10-31** against Omarchy's default branch `quattro`, commit
+`bda3aaf6955404712dbd46541e6c8a75a2b16b7c`, and the latest fetched stable tag, `v4.0.6`.
+These snapshots differ: default-branch functionality must not be presented as already shipped in stable.
 
-1. **Default Agent Replacement**:
-   - Map Omarchy's system-wide default coding agent from the legacy/deprecated `gemini` agent to `agy`.
-   - Preserve complete compatibility with Omarchy CLI commands (`omarchy agent`, `omarchy default agent`, `omarchy agent prompt "..."`), Quickshell menus (`SUPER + SPACE`), and Hyprland hotkeys (`SUPER + SHIFT + CTRL + A`).
-   - **Zero system tampering**: No edits to `/usr/share/omarchy/` so configurations survive all `omarchy update` cycles.
+| Check | quattro commit | v4.0.6 |
+| --- | --- | --- |
+| `omarchy-agent` dispatch | Native `agy` with `--dangerously-skip-permissions` | `gemini --yolo`; no `agy` branch |
+| `omarchy-default-agent` | Accepts `agy`; normalizes aliases including `gemini` to `agy` | Accepts and saves `gemini`; rejects `agy` |
+| Default menu entry ID | `setup.default.agent.agy` | `setup.default.agent.gemini` |
+| Stock shortcut | `SUPER + SHIFT + CTRL + A` → `omarchy-agent --pick` | Same |
 
-2. **24/7 Live Status Bar Quota Monitoring**:
-   - Display real-time 5-hour session and weekly quota pools (both Gemini and Claude/GPT OSS models) on the Omarchy status bar via `ai-usagebar`.
-   - Run a lightweight, headless `systemd` user daemon that keeps Antigravity's internal Language Server RPC active **without keeping an open terminal window** and with **0% idle CPU usage**.
+Prefer native `omarchy-default-agent agy`. Never write `gemini` directly into the default file on
+the native implementation: its dispatcher no longer supports that ID. Only after detecting both
+legacy scripts and obtaining explicit approval should setup install `~/.local/bin/gemini` and save
+the legacy default ID `gemini`. The wrapper translates `--yolo` to
+`--dangerously-skip-permissions`, interactive prompts to `-i`, and one-shot prompts to `-p`.
+Other arguments retain their order; parsing stops at `--`.
 
----
+System scripts are read-only. Never modify `/usr/share/omarchy/`. Detection examines actual branches
+under `${OMARCHY_PATH:-/usr/share/omarchy}/bin/`, not guessed version numbers; unknown implementations fail closed.
 
-## 🧠 Architectural Deep-Dive: How & Why It Works
+## Confirm Preferences First
 
-### Pillar 1: The Omarchy Agent Dispatch System & The Shim Pattern
+Before applying configuration, confirm whether to change the default agent and whether to enable
+the optional service. Both native Omarchy dispatch and the legacy shim bypass agent permission
+prompts; disclose this rather than presenting it as an ordinary launch.
+Keep existing shortcuts, menus, and other providers unless the user requests changes.
 
-#### The System Constraints in Omarchy
-Omarchy manages AI coding agents through `/usr/share/omarchy/bin/omarchy-agent`. The dispatch logic enforces a hardcoded whitelist:
-```bash
-case "$agent" in
-  opencode|gemini|copilot|crush|claude|grok|codex|omp|pi) ... ;;
-  *) echo "Unsupported default agent: $agent" >&2; exit 1 ;;
-esac
-```
-If a user attempts to set `omarchy default agent agy`, the command fails with `Unsupported default agent: agy`. Furthermore, editing `/usr/share/omarchy/` directly is an anti-pattern because any upstream system update will overwrite `/usr/share/omarchy/bin/omarchy-agent`.
+The background stream-json session is **experimental and optional**. It adds no permission-bypass
+flags and does not guarantee a quota endpoint, continuous availability, zero CPU, or a fixed memory
+footprint. Check the installed `agy --help` and authentication before approving it.
+It starts with the user session; setup does not enable lingering.
 
-#### The Transparent Wrapper (Shim) Solution
-To achieve complete compatibility without modifying system files:
-1. We keep Omarchy's internal default agent setting as `gemini` (`~/.config/omarchy/defaults/agent`).
-2. We place a transparent wrapper script at `~/.local/bin/gemini` (which takes precedence over system paths via `$PATH`).
-3. The wrapper translates Omarchy's flags to Antigravity CLI flags:
-   - Omarchy passes `--yolo` (unattended mode) $\rightarrow$ wrapper translates to `--dangerously-skip-permissions` for `agy`.
-   - Omarchy passes `--prompt-interactive "<text>"` or `-i` $\rightarrow$ wrapper translates to `-i "<text>"`.
-   - Omarchy passes `--prompt "<text>"` or `-p` $\rightarrow$ wrapper translates to `-p "<text>"`.
-   - All other parameters are passed through as-is (`exec agy "${args[@]}"`).
+## Quick Start
 
-```mermaid
-flowchart LR
-    A["User Keybinding / CLI / Menu"] --> B["omarchy-agent"]
-    B -->|Calls 'gemini --yolo'| C["~/.local/bin/gemini (Shim)"]
-    C -->|Translates flags to '--dangerously-skip-permissions'| D["/usr/bin/agy"]
-    D --> E["Antigravity TUI / Session"]
-```
-
----
-
-### Pillar 2: Status Bar Quota Monitoring & The Headless Stream Daemon
-
-#### How Antigravity Quota Reporting Works
-Antigravity exposes user quota metrics (5-hour session reset percentage and weekly quota limits) through its embedded Language Server (LS) via a dynamic local TCP port (`127.0.0.1:<port>`) using the `RetrieveUserQuotaSummary` JSON-RPC method.
-
-`ai-usagebar` (the status bar plugin for Omarchy) inspects `/proc` to locate the active `agy` process, determines its dynamic listening port, and queries the live quota stats.
-
-#### The Challenge with Interactive Sessions
-In default CLI usage, the Language Server RPC process terminates the moment the terminal window is closed. As a result, the status bar would display "Offline" or fail to retrieve live quotas whenever `agy` is not actively open in a visible window.
-
-#### The Solution: Headless Stream-JSON Daemon
-By launching `agy` in `stream-json` mode and keeping `stdin` open with `tail -f /dev/null`:
-```bash
-tail -f /dev/null | /usr/bin/agy --input-format stream-json --output-format stream-json
-```
-- `agy` initializes its background Language Server and listens on a dynamic localhost socket port.
-- It waits silently for JSON input on `stdin`, consuming **0.0% CPU** and ~50MB of RAM.
-- `ai-usagebar` discovers this daemon process and polls quota statistics 24/7.
-- Managing this via a `systemd --user` service ensures it starts on login, restarts on crashes, and runs seamlessly in the background.
-
----
-
-## 🤝 User Confirmation & Preferences (用户偏好确认原则)
-
-> [!IMPORTANT]
-> **AI Agent Execution Rule**: When an AI agent executes this skill, it **MUST NOT** modify configuration files or deploy daemons silently without confirming the user's intent first.
-
-### Pre-Execution Confirmation Checklist
-Before running the setup script or applying manual steps, confirm the following choices with the user:
-1. **Default Agent Mapping**: Confirm that the user wishes to set `gemini -> agy` as their primary Omarchy coding agent.
-2. **Background Quota Daemon**: Ask if the user wants the 24/7 background systemd service (`agy-daemon.service`) enabled for continuous status bar quota tracking.
-3. **Keybinding Customization**: Confirm whether the default shortcut (`SUPER + SHIFT + CTRL + A`) or a custom key combination is desired.
-
----
-
-## ⚡ Quick Start (Automated Setup)
-
-If you have cloned this repository or installed it via `npx skills add interjc/omarchy-skills`:
+Install using the standard skills CLI:
 
 ```bash
-# Run the all-in-one idempotent setup script:
+npx skills add interjc/omarchy-skills --skill omarchy-agent-agy
+# Or install the collection: npx skills add interjc/omarchy-skills
+```
+
+Install and authenticate `agy` separately; check `agy --version` and `agy --help`. From the repository root:
+
+```bash
+# In a terminal, ask for missing preferences before writing anything.
 bash skills/omarchy-agent-agy/scripts/setup.sh
+
+# Noninteractive use requires both choices explicitly.
+bash skills/omarchy-agent-agy/scripts/setup.sh --default-agent agy --daemon keep
+
+# Legacy only; this flag never forces a native installation onto the shim path.
+bash skills/omarchy-agent-agy/scripts/setup.sh --default-agent agy --daemon keep --legacy-shim
+
+# Independently approve the experimental service; the executable need not be in /usr/bin.
+bash skills/omarchy-agent-agy/scripts/setup.sh --default-agent keep --daemon enable --agy-bin /absolute/path/to/agy
 ```
 
----
+After a skills CLI installation, run `scripts/setup.sh` from the actual installed skill directory
+instead of assuming the repository-relative path above exists.
 
-## 📖 Step-by-Step Manual Setup
+| Flag | Behavior |
+| --- | --- |
+| `--default-agent agy\|keep` | Select native or approved legacy mapping, or keep the current default |
+| `--daemon enable\|keep` | Create and enable the service, or leave existing service state unchanged; `keep` does not disable it |
+| `--legacy-shim` | Allow the Gemini shim only on detected legacy Omarchy; shadows all `gemini` calls on PATH |
+| `--replace-existing` | Explicitly replace conflicting shim, service, or runner files after backup; does not merge custom code |
+| `--agy-bin /absolute/path` | Service executable; defaults to resolving `agy` on PATH to its absolute real path |
+| `--help` / `-h` | Show help without configuration changes |
 
-Follow these steps to manually configure the complete integration from scratch.
+Setup covers only the default-agent mapping and approved service. It does not install packages or
+plugins, or edit menus, shortcuts, TOML, or `shell.json`. The native setter itself may install a
+tool through mise and launch a terminal; setup does not hide that behavior.
+If the setter returns before saving `agy`, setup reports an error asking to finish installation and
+rerun rather than prematurely claiming success.
+It skips the setter when the desired default is already selected and does not rewrite identical generated files.
+Replacements print a backup path, `<file>.backup.XXXXXX/original`. Symlinked default files are not modified automatically.
+Missing options, unknown capabilities, and file conflicts fail before writes; external setter or
+systemd failures propagate as errors, not as a transaction rollback across all operations.
+Even `--replace-existing` never overwrites menus or layouts.
 
-### Step 1: Ensure Prerequisites
+## Manual Setup And Options
 
-1. Ensure **Google Antigravity CLI (`agy`)** is installed:
-   ```bash
-   agy --version
-   ```
-2. Remove any legacy `gemini` npm/mise package to prevent PATH collisions:
-   ```bash
-   mise uninstall gemini 2>/dev/null || true
-   npm uninstall -g @google/gemini-cli 2>/dev/null || true
-   ```
-3. Ensure `~/.local/bin` is in your `$PATH` (in `~/.bashrc` or `~/.zshrc`):
-   ```bash
-   export PATH="$HOME/.local/bin:$PATH"
-   ```
+### Default Agent And Menu
 
----
+Read the installed `bin/omarchy-agent` and `bin/omarchy-default-agent` and compare with the evidence table.
+For native support use `omarchy-default-agent agy`, with no menu override.
+For the verified legacy implementation, review and install `references/gemini-wrapper.sh` as executable
+`~/.local/bin/gemini`, and only there set `~/.config/omarchy/defaults/agent` to `gemini`.
+Back up any replacement first; review a conflicting shim instead of blindly copying over it.
 
-### Step 2: Create the `gemini -> agy` Transparent Shim
+The legacy wrapper requires `~/.local/bin` before other `gemini` executables on PATH.
+Inspect `type -a gemini` and `command -v agy`, including the desktop session's PATH; editing a shell
+RC does not necessarily update an already running desktop. Do not uninstall the real Gemini CLI
+merely to force PATH precedence.
 
-Create `~/.local/bin/gemini`:
+Only if the user wants the legacy menu renamed, back up and read the complete
+`~/.config/omarchy/extensions/omarchy-menu.jsonc`, then manually merge the member from
+[`references/omarchy-menu.jsonc`](references/omarchy-menu.jsonc) into its existing JSONC object,
+preserving comments and other entries. Never overwrite a customized file with the example or claim
+setup merged it. Menus hot-reload. After upgrading to native support, detect again and use the native
+setter; review whether anything else depends on the old menu override or shim before archiving them.
+Do not automatically delete user files.
+
+### Shortcut
+
+Preserve stock `omarchy-agent --pick`: it opens the selection menu when unset, otherwise launches
+through default dispatch. If the user explicitly requests another key, inspect conflicts, back up,
+and edit existing `~/.config/hypr/bindings.lua`, using
+[`references/hyprland-bindings.lua`](references/hyprland-bindings.lua). Keep calling the dispatcher,
+not direct `agy`. Run `hyprctl reload` and `hyprctl configerrors` afterward.
+
+### Experimental Background Service
+
+[`references/agy-daemon.service`](references/agy-daemon.service) is a template, not a ready-to-install
+unit. Setup replaces `@AGY_BIN@` with the resolved, escaped absolute executable path and installs
+[`references/agy-daemon.sh`](references/agy-daemon.sh) under `~/.local/lib/omarchy-agent-agy/`.
+The runner holds stdin open without sending requests; that alone does not establish that a Language
+Server RPC or quota endpoint is available. If PATH resolves to a launcher such as a mise shim,
+use `--agy-bin` to select the actual installed binary. If upgrades change that path, review backups
+and rerun the explicit service-enablement flow.
+
+Enablement uses `systemctl --user daemon-reload` and `enable --now`; changed service files trigger
+a restart. To undo enablement manually: `systemctl --user disable --now agy-daemon.service`.
+
+### Usage Bar, Separately Approved
+
+Third-party plugins execute unsandboxed code inside the shell. Review the code and obtain approval
+for installation and layout changes before running:
 
 ```bash
-mkdir -p ~/.local/bin
-
-cat << 'EOF' > ~/.local/bin/gemini
-#!/bin/bash
-# Wrapper redirecting Omarchy's legacy gemini agent calls to agy (Antigravity CLI)
-args=()
-while (($#)); do
-  case "$1" in
-    --yolo)
-      # Omarchy uses --yolo for unattended default agent launches
-      args+=(--dangerously-skip-permissions)
-      shift
-      ;;
-    --prompt-interactive|-i)
-      args+=(-i "$2")
-      shift 2
-      ;;
-    --prompt|-p)
-      args+=(-p "$2")
-      shift 2
-      ;;
-    *)
-      args+=("$1")
-      shift
-      ;;
-  esac
-done
-
-exec agy "${args[@]}"
-EOF
-
-chmod +x ~/.local/bin/gemini
+omarchy pkg aur add ai-usagebar-bin
+omarchy plugin add https://github.com/akitaonrails/ai-usagebar.git --enable
 ```
 
----
+Back up and edit `~/.config/ai-usagebar/config.toml` in place, using
+[`references/ai-usagebar.toml`](references/ai-usagebar.toml). If `[antigravity]` exists, adjust
+`enabled = true` there instead of duplicating the table or replacing other providers.
+Do not change primary/UI preferences by default. Verify third-party fields and commands against
+the installed version's help and documentation.
 
-### Step 3: Configure Omarchy Default Agent
-
-Set the default agent in Omarchy configuration:
+Read and back up the **complete** `~/.config/omarchy/shell.json`. Omarchy requires top-level
+`"version": 1`; the user file is a complete configuration, not a deep merge with system defaults.
+Preserve all fields and layout entries, adding `{"id": "akitaonrails.ai-usagebar"}` only to the
+user-selected section array and only if absent. Never replace the file with a partial example.
+If no user file exists, copy the installed complete default configuration before editing.
+Layout changes hot-reload on save. If necessary:
 
 ```bash
-mkdir -p ~/.config/omarchy/defaults
-echo "gemini" > ~/.config/omarchy/defaults/agent
+omarchy-shell shell reloadConfig
+# Or restart the full shell: omarchy restart shell
 ```
 
-Verify with:
+## Verification And Maintenance
+
 ```bash
-omarchy-default-agent
-# Output: gemini
-```
-
----
-
-### Step 4: Customize Omarchy QuickShell Menu
-
-To make the Omarchy launcher menu (`SUPER + SPACE`) display **Antigravity (agy)** instead of Gemini:
-
-Edit `~/.config/omarchy/extensions/omarchy-menu.jsonc`:
-
-```jsonc
-{
-  // Override legacy Gemini entry with Antigravity (agy)
-  "setup.default.agent.gemini": {
-    "icon": "󰫢",
-    "label": "Antigravity (agy)",
-    "checked": "[[ \"$(omarchy-default-agent)\" == \"gemini\" ]]",
-    "action": "omarchy-default-agent gemini"
-  }
-}
-```
-
-Refresh the Quickshell menu cache:
-```bash
-omarchy menu refresh
-```
-
----
-
-### Step 5: Configure Hyprland Shortcut & Shell Aliases
-
-1. **Hyprland Keybinding**:
-   In `~/.config/hypr/bindings.lua`, bind the agent shortcut to open `agy` in a centered, floating Omarchy TUI window:
-   ```lua
-   -- Antigravity Agent (agy)
-   hl.unbind("SUPER + SHIFT + CTRL + A")
-   o.bind("SUPER + SHIFT + CTRL + A", "Antigravity Agent", "omarchy-launch-tui --app-id=org.omarchy.agent agy")
-   ```
-   Reload Hyprland:
-   ```bash
-   hyprctl reload
-   ```
-
-2. **Shell Alias**:
-   Add to `~/.bashrc`:
-   ```bash
-   alias agent="agy"
-   ```
-
----
-
-### Step 6: Set Up the Headless Background Daemon
-
-Create the user-level systemd service at `~/.config/systemd/user/agy-daemon.service`:
-
-```ini
-[Unit]
-Description=Antigravity CLI Background Daemon for Quota Service
-PartOf=default.target
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/bin/bash -c "tail -f /dev/null | /usr/bin/agy --input-format stream-json --output-format stream-json"
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-Environment=HOME=%h
-Environment=XDG_CONFIG_HOME=%h/.config
-Environment=XDG_DATA_HOME=%h/.local/share
-Environment=XDG_CACHE_HOME=%h/.cache
-Environment=XDG_STATE_HOME=%h/.local/state
-Environment=XDG_RUNTIME_DIR=%t
-
-[Install]
-WantedBy=default.target
-```
-
-Enable and start the service:
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now agy-daemon.service
-```
-
-Check the daemon status:
-```bash
-systemctl --user status agy-daemon.service
-```
-
----
-
-### Step 7: Configure `ai-usagebar` & Omarchy Status Bar
-
-1. **Install `ai-usagebar` and plugin** (if not already installed):
-   ```bash
-   omarchy pkg aur add ai-usagebar-bin
-   omarchy plugin add https://github.com/akitaonrails/ai-usagebar.git --enable
-   ```
-
-2. **Enable Antigravity in `~/.config/ai-usagebar/config.toml`**:
-   ```toml
-   [antigravity]
-   enabled = true
-   ```
-
-3. **Verify Status Bar layout (`~/.config/omarchy/shell.json`)**:
-   Ensure `akitaonrails.ai-usagebar` is included in `bar.layout.right`:
-   ```json
-   {
-     "bar": {
-       "layout": {
-         "right": [
-           { "id": "omarchy.tray" },
-           { "id": "akitaonrails.ai-usagebar", "lastSelectedEntryId": "antigravity" }
-         ]
-       }
-     }
-   }
-   ```
-
-4. **Reload Omarchy Shell**:
-   ```bash
-   omarchy shell reload
-   ```
-
----
-
-## 🔍 Verification & Testing
-
-### 1. Test CLI Dispatch & Flags
-```bash
-# Test direct agent launch
-omarchy agent --inline --prompt "Hello Antigravity"
-
-# Test default agent status
-omarchy default agent
-# Should output: gemini
-```
-
-### 2. Test Quickshell Menu
-- Press `SUPER + SPACE`.
-- Navigate to `Setup` $\rightarrow$ `Default Agent`.
-- Verify **Antigravity (agy)** is listed with icon `󰫢` and marked with `✓`.
-
-### 3. Test Hyprland Hotkey
-- Press `SUPER + SHIFT + CTRL + A`.
-- A floating terminal window (`app-id: org.omarchy.agent`) running `agy` should appear centered on screen.
-
-### 4. Test Daemon & Quota Readout
-```bash
-# 1. Verify daemon is active
+omarchy-default-agent               # agy natively; gemini for approved legacy mapping
+command -v agy
+type -a gemini                     # Legacy only: check shim precedence
+# These launch a permission-bypassing agent; run only after approval:
+omarchy agent --inline
+omarchy agent prompt "Hello Antigravity"
+# Only if the service was selected:
 systemctl --user is-active agy-daemon.service
-# Output: active
-
-# 2. Test CLI quota query via ai-usagebar
-ai-usagebar --vendor antigravity
+systemctl --user status agy-daemon.service
+journalctl --user -u agy-daemon.service -n 50 --no-pager
+ai-usagebar --help
+ai-usagebar --vendor antigravity    # Confirm support in installed help first
 ```
 
-Expected output:
-```text
-󰧑 3% · 1%
+Check the shortcut and menu separately. Inspect actual quota output or errors rather than assuming
+quota periods, values, or an RPC method. If offline, compare with authenticated `agy` running in a
+visible terminal, then inspect service logs and installed CLI support. An active service is not
+proof of a successful quota query.
 
-╭────────────────────────────╮
-│       Google AI Pro        │
-│ ────────────────────────── │
-│   󰔟  Session (5h)          │
-│   󰆧  Gemini             3% │
-│   󰆧  Claude & GPT OSS   0% │
-│ ────────────────────────── │
-│   󰃰  Weekly                │
-│   󰆧  Gemini             1% │
-│   󰆧  Claude & GPT OSS   0% │
-╰────────────────────────────╯
-```
+Maintain packages with `omarchy update` or an available AUR helper; there is no `omarchy pkg aur update`.
+Use `omarchy plugin update akitaonrails.ai-usagebar`, preserving local changes before updates;
+run `omarchy-shell shell rescanPlugins` if needed. Recheck capabilities, CLI flags, and quota queries after upgrades.
 
----
+Offline repository checks (no real installation):
 
-## 🔄 Maintenance & Safe Upgrade Strategy (维护与安全升级指南)
-
-Because `ai-usagebar` integrates closely with the status bar, user shims, and background daemons, follow this structured upgrade strategy when new versions of `ai-usagebar` or its Omarchy plugin are released.
-
-### 1. Architectural Separation & Customization Safety
-
-The integration follows Omarchy's **Non-Destructive Principle**:
-- **Backend Binary (`ai-usagebar-bin`)**: Managed via AUR/pacman (`/usr/bin/ai-usagebar`).
-- **Omarchy Shell Plugin (`akitaonrails.ai-usagebar`)**: Cloned into `~/.config/omarchy/plugins/akitaonrails.ai-usagebar/`.
-- **User Configurations & Shims**:
-  - `~/.config/ai-usagebar/config.toml` (vendor configurations, e.g., Antigravity, SuperGrok, OpenAI)
-  - `~/.local/bin/ai-usagebar-grok-acp` (custom protocol adapter/shim if needed)
-  - `~/.config/systemd/user/agy-daemon.service` (headless RPC daemon)
-
-> [!NOTE]
-> User configurations in `~/.config/ai-usagebar/` and custom shims in `~/.local/bin/` live outside both the git repository and AUR package boundaries. They will **not** be overwritten during upgrades.
-
-### 2. Standard Upgrade Procedure
-
-#### Step A: Upgrade the Backend Binary (AUR)
-Keep the underlying CLI binary updated to access newer vendor endpoints and protocol fixes:
 ```bash
-yay -Syu ai-usagebar-bin
-# or: omarchy pkg aur update ai-usagebar-bin
+bash -n skills/omarchy-agent-agy/scripts/setup.sh
+bash -n skills/omarchy-agent-agy/references/gemini-wrapper.sh
+bash -n skills/omarchy-agent-agy/references/agy-daemon.sh
+bash skills/omarchy-agent-agy/scripts/test.sh
+# Optional: also test both pinned snapshots from an existing read-only checkout.
+bash skills/omarchy-agent-agy/scripts/test.sh /tmp/opencode/omarchy-latest
 ```
 
-#### Step B: Upgrade the Status Bar Plugin (Git / Omarchy Shell)
-Omarchy provides built-in plugin update capabilities:
-```bash
-omarchy plugin update akitaonrails.ai-usagebar
-```
-*Note*: `omarchy plugin update` executes `git merge --ff-only FETCH_HEAD`. As long as you have not directly edited tracked files inside the plugin folder, the update applies cleanly without conflicts and hot-reloads the Quickshell UI.
+Tests use a temporary HOME and mocked Omarchy/systemctl. They do not verify real authentication,
+desktop rendering, background resource consumption, or third-party quota endpoints.
 
-#### Step C: Post-Upgrade Verification
-Verify that both the daemon and status bar can read metrics after an upgrade:
-```bash
-# 1. Test CLI metrics query
-ai-usagebar usage
+## Upstream References
 
-# 2. If the status bar did not auto-refresh, force a plugin reload
-omarchy-shell shell rescanPlugins
-```
-
-### 3. Handling Custom Source-Code Modifications (If Modifying QML / JS)
-
-If you plan to modify or have modified the plugin's source code (such as `omarchy/BarWidget.qml` or `omarchy/Panel.qml`), choose one of the following maintenance patterns:
-
-- **Pattern A: Local Git Branch & Rebase (Recommended for minor tweaks)**:
-  Commit your customizations to a local tracking branch instead of `main`:
-  ```bash
-  cd ~/.config/omarchy/plugins/akitaonrails.ai-usagebar
-  git checkout -b custom-modifications
-  git commit -am "My custom QML tweaks"
-  ```
-  When upgrading:
-  ```bash
-  git checkout main
-  git pull --ff-only origin main
-  git checkout custom-modifications
-  git rebase main
-  omarchy-shell shell rescanPlugins
-  ```
-
-- **Pattern B: Fork into an Independent Plugin ID (Recommended for major redesigns)**:
-  Clone the plugin with a unique identifier (e.g. `user.ai-usagebar`) to completely decouple your changes from the upstream repository:
-  1. Rename or copy folder: `cp -r ~/.config/omarchy/plugins/akitaonrails.ai-usagebar ~/.config/omarchy/plugins/<username>.ai-usagebar`
-  2. Change `"id"` in `manifest.json` to `<username>.ai-usagebar`.
-  3. Update `~/.config/omarchy/shell.json` to reference `<username>.ai-usagebar`.
-
-### 4. Transitioning Custom Shims to Upstream Native (e.g., Grok / SuperGrok)
-
-When upstream software matures, temporary protocol adapters or shims (such as `ai-usagebar-grok-acp`) become obsolete. Follow this evaluation and transition workflow to safely decommission shims.
-
-#### Background Context
-Early versions of `ai-usagebar` (v1.3.1) communicated with Grok CLI (v1.0.5) via standard input/output using the JSON-RPC ACP method `x.ai/billing`. When Grok changed the method name to `_x.ai/billing`, a Python stdio shim (`~/.local/bin/ai-usagebar-grok-acp`) was placed between them. 
-Modern `ai-usagebar` (v1.9.1+ / v1.20.2+) introduced **Direct HTTPS mode**: it directly reads authentication credentials from `~/.grok/auth.json` and contacts `https://cli-chat-proxy.grok.com/v1/billing`, completely bypassing the CLI subprocess and ACP protocol.
-
-#### How to Determine If Native Grok Usage Can Be Used (判断依据)
-Verify that all of the following conditions are met:
-1. **Binary Version Check**: `ai-usagebar` is version $\ge$ `1.9.1` (or `1.20.0+`):
-   ```bash
-   ai-usagebar --version
-   ```
-2. **Credential Existence**: Grok login credential exists and contains a valid key:
-   ```bash
-   test -f "$HOME/.grok/auth.json" && echo "Grok credentials found"
-   ```
-3. **Isolated Non-Destructive Test**:
-   Run an isolated query with a temporary configuration omitting `grok_binary`:
-   ```bash
-   printf '[supergrok]\nenabled = true\n' > /tmp/test-grok.toml
-   ai-usagebar --config /tmp/test-grok.toml --vendor supergrok --pretty
-   rm -f /tmp/test-grok.toml
-   ```
-   **Pass Criteria**: The output displays the `SuperGrok` usage card (e.g., `Weekly usage`, `Grok Build`, `Grok Chat`) with an updated timestamp and no transport error.
-
-#### How to Switch to Native and Remove Custom Shims (切换到原生步骤)
-
-Once verified, cleanly retire the custom shim:
-
-1. **Update `~/.config/ai-usagebar/config.toml`**:
-   Remove the `grok_binary` parameter and legacy shim comments under `[supergrok]`:
-   ```toml
-   # Keep only standard provider activation:
-   [supergrok]
-   enabled = true
-   ```
-2. **Remove or Archive the Custom Shim Script**:
-   ```bash
-   # Remove:
-   rm -f ~/.local/bin/ai-usagebar-grok-acp
-
-   # Or archive to backup:
-   mv ~/.local/bin/ai-usagebar-grok-acp ~/.local/bin/ai-usagebar-grok-acp.bak
-   ```
-3. **Purge Cache & Verify Full Output**:
-   ```bash
-   rm -rf ~/.cache/ai-usagebar/supergrok/
-   ai-usagebar usage
-   ```
-4. **Hot-Reload the Status Bar Widget**:
-   ```bash
-   omarchy-shell shell rescanPlugins
-   ```
-
----
-
-## 🛠️ Troubleshooting & FAQs
-
-### Q1: `ai-usagebar` reports "No Antigravity Language Server found"
-- **Cause**: The daemon is either not running or cannot be inspected by `ai-usagebar`.
-- **Fix**:
-  1. Check daemon status: `systemctl --user status agy-daemon.service`.
-  2. Verify listening sockets:
-     ```bash
-     ss -tulpn | grep agy
-     ```
-  3. Restart daemon: `systemctl --user restart agy-daemon.service`.
-
-### Q2: `omarchy agent` runs the old Gemini CLI instead of `agy`
-- **Cause**: `$HOME/.local/bin` is placed after `mise` shims or `/usr/bin` in your `$PATH`.
-- **Fix**: In `~/.bashrc` / `~/.zshrc`, ensure:
-  ```bash
-  export PATH="$HOME/.local/bin:$PATH"
-  ```
-  Run `which gemini` to confirm it resolves to `/home/<user>/.local/bin/gemini`.
-
-### Q3: How much system resources does `agy-daemon` consume?
-- **Resource Footprint**: `0.0%` CPU when idle, and approximately ~50MB of RAM. It does not perform continuous LLM polling; it only answers socket queries when `ai-usagebar` requests metrics.
-
----
-
-## 📁 Reference Files
-
-- [`scripts/setup.sh`](./scripts/setup.sh) — All-in-one idempotent setup script.
-- [`references/gemini-wrapper.sh`](./references/gemini-wrapper.sh) — Standalone wrapper script.
-- [`references/agy-daemon.service`](./references/agy-daemon.service) — Standalone systemd user service.
-- [`references/omarchy-menu.jsonc`](./references/omarchy-menu.jsonc) — Quickshell menu override.
-- [`references/ai-usagebar.toml`](./references/ai-usagebar.toml) — ai-usagebar configuration.
-- [`references/hyprland-bindings.lua`](./references/hyprland-bindings.lua) — Hyprland hotkey configuration.
+- [quattro dispatcher (pinned commit)](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/bin/omarchy-agent)
+- [quattro default setter (pinned commit)](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/bin/omarchy-default-agent)
+- [v4.0.6 dispatcher](https://github.com/basecamp/omarchy/blob/v4.0.6/bin/omarchy-agent)
+- [v4.0.6 default setter](https://github.com/basecamp/omarchy/blob/v4.0.6/bin/omarchy-default-agent)
+- [Native menu ID](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/default/omarchy/omarchy-menu.jsonc), [stock shortcut](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/default/hypr/bindings/utilities.lua)
+- [Complete shell configuration](https://github.com/basecamp/omarchy/blob/bda3aaf6955404712dbd46541e6c8a75a2b16b7c/config/omarchy/shell.json), [ai-usagebar documentation](https://github.com/akitaonrails/ai-usagebar)

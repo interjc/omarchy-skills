@@ -1,3 +1,6 @@
+# Example structure ONLY. Do not copy over an existing profile.
+# Add only confirmed engines through native setup / an available Fcitx editor.
+# All three entries below are in ONE group; group cycling does not cycle engines.
 [Groups/0]
 Name=Default
 Default Layout=us

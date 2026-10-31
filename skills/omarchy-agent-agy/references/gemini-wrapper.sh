@@ -1,24 +1,28 @@
-#!/bin/bash
-# Wrapper redirecting Omarchy's legacy gemini agent calls to agy (Antigravity CLI)
-# Location: ~/.local/bin/gemini
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Legacy Omarchy only. This shadows every gemini call on the user's PATH.
 
 args=()
 while (($#)); do
   case "$1" in
     --yolo)
-      # Omarchy uses --yolo for unattended default agent launches
       args+=(--dangerously-skip-permissions)
       shift
       ;;
     --prompt-interactive|-i)
-      # Interactive prompt argument mapping
+      (($# >= 2)) || { printf '%s needs a prompt\n' "$1" >&2; exit 2; }
       args+=(-i "$2")
       shift 2
       ;;
     --prompt|-p)
-      # One-shot prompt argument mapping
+      (($# >= 2)) || { printf '%s needs a prompt\n' "$1" >&2; exit 2; }
       args+=(-p "$2")
       shift 2
+      ;;
+    --)
+      args+=("$@")
+      break
       ;;
     *)
       args+=("$1")

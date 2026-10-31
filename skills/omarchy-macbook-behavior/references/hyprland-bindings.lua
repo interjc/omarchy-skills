@@ -1,47 +1,34 @@
--- Screenshot, Clipboard and Hotkey Bindings for Omarchy / Hyprland
--- Location: Append to ~/.config/hypr/bindings.lua
+-- EXAMPLES ONLY: select confirmed options; do not copy all of these blindly.
+-- Load selected overrides after personal bindings. Inspect hyprctl binds -j first.
+-- Leave native Print / Super+Ctrl+Alt+C screenshot bindings unchanged; F12 is not default.
+-- Inspect the executable resolved by type -P omarchy-capture-screenshot first.
+-- OMARCHY_PATH is installation context only; its source may differ from PATH's wrapper.
+-- A line-leading omasnap / exec omasnap call in that executable selects the examples below;
+-- confirm both omarchy-capture-screenshot and omasnap are executable on PATH.
+-- Legacy grim/tensaku, unknown/unreadable wrapper or none on PATH: use bare omasnap instead.
+-- Never run the wrapper to detect it. If a required command is missing, stop before edits.
 
--- =============================================================================
--- Omasnap Screenshot Overlay
--- =============================================================================
--- Unbind default keys
-hl.unbind("PRINT")
-hl.unbind("F12")
+-- Option A: replaces the native Audio shortcut (or any personal binding on this chord).
+-- hl.unbind("SUPER + CTRL + A")
+-- o.bind("SUPER + CTRL + A", "Screenshot", "omarchy-capture-screenshot")
 
--- Note: SUPER + CTRL + A is mapped to Audio panel in Omarchy defaults.
--- Unbind it first before mapping to screenshot tool (omasnap):
-hl.unbind("SUPER + CTRL + A")
-o.bind("SUPER + CTRL + A", "Screenshot", "omasnap")
-
--- Alternative / Additional macOS Cmd+Shift+4 binding (ALT + SHIFT + 4):
+-- Option B: an alternative to macOS Cmd+Shift+4, not identical physical modifiers.
 -- hl.unbind("ALT + SHIFT + 4")
--- o.bind("ALT + SHIFT + 4", "Screenshot (macOS Cmd+Shift+4)", "omasnap")
+-- o.bind("ALT + SHIFT + 4", "Screenshot", "omarchy-capture-screenshot")
 
--- Default function keys
-o.bind("PRINT", "Screenshot", "omasnap")
-o.bind("F12", "Screenshot", "omasnap")
+-- Legacy/direct alternatives: choose these INSTEAD of the wrapper binding above.
+-- hl.unbind("SUPER + CTRL + A")
+-- o.bind("SUPER + CTRL + A", "Screenshot", "omasnap")
+-- hl.unbind("ALT + SHIFT + 4")
+-- o.bind("ALT + SHIFT + 4", "Screenshot", "omasnap")
 
--- Instant overlay layer rules (no animation, no screen share leak)
-hl.layer_rule({
-  match = { namespace = "^omasnap$" },
-  no_anim = true,
-  animation = "none",
-  no_screen_share = true,
-})
+-- Optional clipboard alias; native Super+Ctrl+V remains available unless customized.
+-- hl.unbind("SUPER + SHIFT + Z")
+-- o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")
 
--- =============================================================================
--- Clipboard History Manager (Alfred Parity)
--- =============================================================================
--- In Omarchy, Super+C and Super+V are universal copy and paste (like Cmd+C/V).
--- Default clipboard manager is SUPER + CTRL + V.
--- Replicate Alfred muscle memory (Cmd + Shift + Z -> SUPER + SHIFT + Z):
-hl.unbind("SUPER + SHIFT + Z")
-o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")
-
--- =============================================================================
--- Optional: Swap Super+Space (IME) and Ctrl+Space (Omarchy Menu)
--- =============================================================================
--- In modern macOS, Cmd+Space toggles input source, while Ctrl+Space / Alt+Space launches apps.
--- If preferred, unbind Super+Space from Hyprland (pass-through to Fcitx5) and bind Ctrl+Space to Menu:
--- hl.unbind("SUPER + SPACE")
--- o.bind("CTRL + SPACE", "Omarchy menu", "omarchy-menu toggle")
+-- The newer wrapper supplies notifications and screenshot-directory compatibility.
+-- The direct path uses installed omasnap defaults; do not add --notify (not available
+-- on the live 4.0.6-1 machine's CLI), --save or --capture-fullscreen to these bindings.
+-- No extra overlay layer rule is needed.
+-- Do NOT set no_screen_share on omasnap: scrolling capture needs to capture its overlay.
+-- Keep native Super+I / Super+Shift+I language cycling and Ctrl+Space terminal prefix.
