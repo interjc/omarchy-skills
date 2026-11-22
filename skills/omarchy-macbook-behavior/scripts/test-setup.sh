@@ -8,6 +8,8 @@ export HOME="$root/home"
 mkdir -p "$HOME/.config/hypr" "$HOME/.config/fcitx5" "$HOME/.local/share/fcitx5/rime" "$root/bin" "$root/omarchy/bin"
 export MOCK_LOG="$root/unexpected-commands"
 export OMARCHY_PATH="$root/omarchy"
+defaults_source="$OMARCHY_PATH/default/hypr/omarchy.lua"
+mkdir -p "$(dirname -- "$defaults_source")"
 # Whitelist utilities so host screenshot tools and Omarchy sources cannot leak in.
 for command in bash dirname realpath mkdir ln chmod cp rm tar sha256sum grep awk sed mktemp cmp mv cat lua script; do
   if executable=$(type -P "$command"); then
@@ -45,7 +47,8 @@ require("hypr.input")
 require("hypr.bindings")
 personal_loaded = true
 LUA
-printf '%s\n' '-- Personal keyboard settings, not generated.' 'personal_keyboard = "de"' > "$hypr/input.lua"
+printf '%s\n' '-- Personal keyboard settings, not generated.' 'personal_keyboard = "de"' \
+  '  -- hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })' > "$hypr/input.lua"
 printf '%s\n' '-- Personal bindings remain intact.' > "$hypr/bindings.lua"
 printf '%s\n' 'custom profile' > "$HOME/.config/fcitx5/profile"
 printf '%s\n' 'custom hotkeys' > "$HOME/.config/fcitx5/config"
@@ -160,6 +163,11 @@ rm "$root/bin/omarchy-capture-screenshot"
 ln -s "$OMARCHY_PATH/bin/omarchy-capture-screenshot" "$root/bin/omarchy-capture-screenshot"
 cp "$root/native-capture" "$OMARCHY_PATH/bin/omarchy-capture-screenshot"
 
+cat > "$defaults_source" <<'LUA'
+if _G.omarchy_default_gestures ~= false then
+  require("default.hypr.gestures")
+end
+LUA
 for backend in native legacy; do
   if [[ $backend == native ]]; then
     expected_command=omarchy-capture-screenshot
@@ -227,8 +235,30 @@ LUA
   done
 done
 
-# Match the live legacy release: no default/hypr/gestures.lua, personal input kept.
-[[ ! -e $OMARCHY_PATH/default/hypr/gestures.lua ]]
+# An upgrade drops the installer-owned flag while keeping the selected touchpad options.
+bash "$scripts/setup.sh" --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep > "$root/output"
+grep -qx 'omarchy_default_gestures = false' "$hypr/hyprland.lua"
+cp "$hypr/hyprland.lua" "$root/legacy-main"
+cp "$hypr/macbook_behavior.lua" "$root/selected-touchpad"
+cat > "$defaults_source" <<'LUA'
+-- Older packages used: if _G.omarchy_default_gestures ~= false then
+require("default.hypr.input")
+LUA
+bash "$scripts/setup.sh" --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep > "$root/output"
+if grep -qE 'omarchy_default_gestures|omarchy-macbook-behavior gestures' "$hypr/hyprland.lua"; then
+  printf 'Setup kept a stale gesture marker after an upgrade\n' >&2; exit 1
+fi
+cmp "$root/selected-touchpad" "$hypr/macbook_behavior.lua"
+backup_path=$(sed -n 's/^Backup: //p' "$root/output")
+cmp "$root/legacy-main" "$backup_path"
+before=$(snapshot)
+bash "$scripts/setup.sh" --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep > "$root/output"
+[[ $(snapshot) == "$before" ]]
+rm "$defaults_source"
+bash "$scripts/setup.sh" --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep > "$root/output"
+[[ $(snapshot) == "$before" ]]
+
+# Match the live legacy release: no default gesture module and personal input kept.
 bash "$scripts/setup.sh" --keep-trackpad --screenshot-hotkey super-ctrl-a --clipboard-hotkey super-shift-z > "$root/output"
 grep -qx 'Screenshot command: omasnap' "$root/output"
 if grep -q 'omarchy_default_gestures' "$hypr/hyprland.lua" ||
@@ -275,5 +305,6 @@ fi
 printf '%s\n' 'PASS: isolated native-wrapper/legacy-omasnap detection, PATH/source mismatches in both directions,' \
   'missing-tool/no-write failures,' \
   '48 preference/backend combinations, shortcut-only legacy install, identical reruns,' \
+  'conditional gesture flag detection, upgrade cleanup, commented examples,' \
   'personal/IME preservation, Lua load ordering (if available), live/fallback audit,' \
   'TTY confirmation (if available), and no package/service/system mutation commands.'

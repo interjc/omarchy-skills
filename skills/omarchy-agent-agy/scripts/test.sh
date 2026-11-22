@@ -2,6 +2,11 @@
 set -euo pipefail
 
 skill_dir=$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")/..")
+installed_omarchy=${OMARCHY_PATH:-/usr/share/omarchy}
+if (($# > 1)); then
+  printf 'Usage: test.sh [--installed | upstream-checkout]\n' >&2
+  exit 2
+fi
 sandbox=$(mktemp -d)
 trap 'rm -rf -- "$sandbox"' EXIT
 export HOME="$sandbox/home" OMARCHY_PATH="$sandbox/omarchy" TRACE="$sandbox/trace"
@@ -244,10 +249,9 @@ grep -q 'preserved JSONC' "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
 [[ $(<"$HOME/.config/ai-usagebar/config.toml") == $'[other]\nenabled = true' ]]
 [[ $(<"$HOME/.config/omarchy/shell.json") == '{"version":1,"custom":true}' ]]
 
-# Optional: execute the real pinned dispatch/setter scripts, with all launch,
-# package-manager, and agent effects mocked. The checkout is read-only.
+# Optional: exercise installed native scripts or the pinned upstream variants,
+# with launcher, agent, and package-manager effects mocked.
 if [[ $# == 1 ]]; then
-  upstream=$1
   cp "$sandbox/bin/agy" "$HOME/.local/bin/agy"
   cat > "$sandbox/bin/mise" <<'MOCK'
 #!/usr/bin/env bash
@@ -262,22 +266,24 @@ MOCK
 [[ $1 != --app-id=* ]] || shift
 exec "$@"
 MOCK
-  chmod +x "$sandbox/bin/mise" "$sandbox/bin/omarchy-cmd-missing" "$sandbox/bin/omarchy-launch-tui"
+  cat > "$sandbox/bin/omarchy-launch-floating-terminal-with-presentation" <<'MOCK'
+#!/usr/bin/env bash
+printf 'Unexpected installation launcher in dispatch test\n' >&2
+exit 99
+MOCK
+  chmod +x "$sandbox/bin/mise" "$sandbox/bin/omarchy-cmd-missing" "$sandbox/bin/omarchy-launch-tui" \
+    "$sandbox/bin/omarchy-launch-floating-terminal-with-presentation"
   export PATH="$HOME/.local/bin:$sandbox/bin:$OMARCHY_PATH/bin:/usr/bin:/bin"
-  for ref in bda3aaf6955404712dbd46541e6c8a75a2b16b7c v4.0.6; do
-    git -C "$upstream" show "$ref:bin/omarchy-agent" > "$OMARCHY_PATH/bin/omarchy-agent"
-    git -C "$upstream" show "$ref:bin/omarchy-default-agent" > "$OMARCHY_PATH/bin/omarchy-default-agent"
+
+  check_dispatch() {
+    local expected_agent=$1 prompt_flag=$2 source=$3
     chmod +x "$OMARCHY_PATH/bin/omarchy-agent" "$OMARCHY_PATH/bin/omarchy-default-agent"
     printf 'claude\n' > "$HOME/.config/omarchy/defaults/agent"
     : > "$TRACE"
     setup --default-agent agy --daemon keep --legacy-shim
-    if [[ $ref == v4.0.6 ]]; then
-      [[ $(<"$HOME/.config/omarchy/defaults/agent") == gemini ]]
-      prompt_flag='<-i>'
-    else
-      [[ $(<"$HOME/.config/omarchy/defaults/agent") == agy ]]
+    [[ $(<"$HOME/.config/omarchy/defaults/agent") == "$expected_agent" ]]
+    if [[ $expected_agent == agy ]]; then
       grep -q '<--dangerously-skip-permissions>' "$TRACE"
-      prompt_flag='<--prompt-interactive>'
     fi
     : > "$TRACE"
     "$OMARCHY_PATH/bin/omarchy-agent" --inline --prompt 'literal prompt'
@@ -285,7 +291,22 @@ MOCK
     before=$(snapshot)
     setup --default-agent agy --daemon keep --legacy-shim
     [[ $(snapshot) == "$before" ]]
-    printf 'PASS: actual upstream %s dispatch and mapping\n' "$ref"
-  done
+    printf 'PASS: %s dispatch and mapping\n' "$source"
+  }
+
+  if [[ $1 == --installed ]]; then
+    cp -- "$installed_omarchy/bin/omarchy-agent" "$installed_omarchy/bin/omarchy-default-agent" "$OMARCHY_PATH/bin/"
+    check_dispatch agy '<--prompt-interactive>' "installed Omarchy at $installed_omarchy"
+  else
+    for ref in bda3aaf6955404712dbd46541e6c8a75a2b16b7c v4.0.6; do
+      git -C "$1" show "$ref:bin/omarchy-agent" > "$OMARCHY_PATH/bin/omarchy-agent"
+      git -C "$1" show "$ref:bin/omarchy-default-agent" > "$OMARCHY_PATH/bin/omarchy-default-agent"
+      if [[ $ref == v4.0.6 ]]; then
+        check_dispatch gemini '<-i>' "$ref"
+      else
+        check_dispatch agy '<--prompt-interactive>' "$ref"
+      fi
+    done
+  fi
 fi
 printf 'PASS: native/legacy mapping, preflight safety, backups, wrapper, daemon, preservation, idempotency\n'

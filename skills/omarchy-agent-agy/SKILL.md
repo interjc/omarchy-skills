@@ -9,11 +9,9 @@ description: Integrate Antigravity CLI (agy) with Omarchy, preferring native def
 
 ## Audit Evidence And Architecture
 
-Audited on **2026-10-31** against Omarchy's default branch `quattro`, commit
-`bda3aaf6955404712dbd46541e6c8a75a2b16b7c`, and the latest fetched stable tag, `v4.0.6`.
-These snapshots differ: default-branch functionality must not be presented as already shipped in stable.
+The **2026-11-22** audit used Omarchy **`4.5.0-3`**. Native support has shipped, and the installed implementation still determines when the legacy Gemini path applies. [Omarchy v4.5.0 release](https://github.com/omacom/omarchy/releases/tag/v4.5.0)
 
-| Check | quattro commit | v4.0.6 |
+| Check | Installed `4.5.0-3` | Historical `v4.0.6` |
 | --- | --- | --- |
 | `omarchy-agent` dispatch | Native `agy` with `--dangerously-skip-permissions` | `gemini --yolo`; no `agy` branch |
 | `omarchy-default-agent` | Accepts `agy`; normalizes aliases including `gemini` to `agy` | Accepts and saves `gemini`; rejects `agy` |
@@ -37,10 +35,9 @@ the optional service. Both native Omarchy dispatch and the legacy shim bypass ag
 prompts; disclose this rather than presenting it as an ordinary launch.
 Keep existing shortcuts, menus, and other providers unless the user requests changes.
 
-The background stream-json session is **experimental and optional**. It adds no permission-bypass
-flags and does not guarantee a quota endpoint, continuous availability, zero CPU, or a fixed memory
-footprint. Check the installed `agy --help` and authentication before approving it.
-It starts with the user session; setup does not enable lingering.
+For quota checks, start with the usage-bar query described below. The background stream-json session
+is **experimental and optional**. Check the installed `agy --help` and authentication before enabling it.
+It starts with the user session and uses ordinary CLI permissions. Verify quota access separately.
 
 ## Quick Start
 
@@ -95,7 +92,8 @@ Even `--replace-existing` never overwrites menus or layouts.
 ### Default Agent And Menu
 
 Read the installed `bin/omarchy-agent` and `bin/omarchy-default-agent` and compare with the evidence table.
-For native support use `omarchy-default-agent agy`, with no menu override.
+Use the native `omarchy default agent agy` only when the user wants Antigravity as their default. This command also launches the agent.
+The user can keep their current default. Check for a dedicated Antigravity binding before changing menus or shortcuts.
 For the verified legacy implementation, review and install `references/gemini-wrapper.sh` as executable
 `~/.local/bin/gemini`, and only there set `~/.config/omarchy/defaults/agent` to `gemini`.
 Back up any replacement first; review a conflicting shim instead of blindly copying over it.
@@ -109,9 +107,10 @@ Only if the user wants the legacy menu renamed, back up and read the complete
 `~/.config/omarchy/extensions/omarchy-menu.jsonc`, then manually merge the member from
 [`references/omarchy-menu.jsonc`](references/omarchy-menu.jsonc) into its existing JSONC object,
 preserving comments and other entries. Never overwrite a customized file with the example or claim
-setup merged it. Menus hot-reload. After upgrading to native support, detect again and use the native
-setter; review whether anything else depends on the old menu override or shim before archiving them.
-Do not automatically delete user files.
+setup merged it. Menus hot-reload. After upgrading to native support, check the old
+`setup.default.agent.gemini` entry and its checked state for `gemini`. The 4.5 stock entry is
+`setup.default.agent.agy`, and the native setter normalizes the `gemini` alias to `agy`. Check whether
+anything else depends on the shim and confirm before archiving the old menu entry and wrapper.
 
 ### Shortcut
 
@@ -135,6 +134,10 @@ Enablement uses `systemctl --user daemon-reload` and `enable --now`; changed ser
 a restart. To undo enablement manually: `systemctl --user disable --now agy-daemon.service`.
 
 ### Usage Bar, Separately Approved
+
+ai-usagebar `1.52.3` can read quota through a signed-in `agy -p "/quota"` and supports other quota sources.
+Verify actual output with `ai-usagebar --vendor antigravity` first. If the experimental service is already running, obtain approval before stopping it to verify the independent query.
+[Antigravity in the ai-usagebar 1.52.3 documentation](https://github.com/akitaonrails/ai-usagebar/blob/v1.52.3/README.md#authentication)
 
 Third-party plugins execute unsandboxed code inside the shell. Review the code and obtain approval
 for installation and layout changes before running:
@@ -195,7 +198,9 @@ bash -n skills/omarchy-agent-agy/scripts/setup.sh
 bash -n skills/omarchy-agent-agy/references/gemini-wrapper.sh
 bash -n skills/omarchy-agent-agy/references/agy-daemon.sh
 bash skills/omarchy-agent-agy/scripts/test.sh
-# Optional: also test both pinned snapshots from an existing read-only checkout.
+# Optional: copy locally packaged native Agent scripts and test with mocks.
+bash skills/omarchy-agent-agy/scripts/test.sh --installed
+# Or test both pinned snapshots from an existing read-only checkout.
 bash skills/omarchy-agent-agy/scripts/test.sh /tmp/opencode/omarchy-latest
 ```
 

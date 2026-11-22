@@ -9,9 +9,9 @@ description: 在 Omarchy 的 Lua Hyprland 配置中设置经用户确认的 MacB
 
 ## 适用范围与兼容性
 
-已对照上游 `quattro` 提交 `bda3aaf6955404712dbd46541e6c8a75a2b16b7c` 审查，提交日期为 **2026-10-31**。另行检查的最新稳定版本标签为 **v4.0.6**。这只是一个版本快照，并不保证稳定版或更早的安装具有相同的 API、快捷键或 systemd 单元。自动化流程要求使用包含 `require("default.hypr.omarchy")` 的当前 Lua 配置；较早的 `.conf` 配置需要单独进行针对具体版本的审查。
+**2026-11-22** 核对了本机 Omarchy **`4.5.0-3`** 和 Hyprland **`0.56.2-4`**。自动化流程要求使用包含 `require("default.hypr.omarchy")` 的 Lua 配置。较早的 `.conf` 配置需按具体版本手动集成。[Omarchy v4.5.0 发布记录](https://github.com/omacom/omarchy/releases/tag/v4.5.0)
 
-实机 **4.0.6-1** 的 `omarchy-capture-screenshot` 仍使用 grim、`omarchy-capture-region` 和 tensaku，并不调用 `omasnap`；已安装的独立 `omasnap` 支持 `--save` / `--capture-fullscreen`，但没有 `--notify`。该机器完全没有 `default/hypr/gestures.lua`，因此本版本没有该默认模块引起的手势冲突；不能把较新 `quattro` 的行为直接套用到它上面。仅添加快捷键时使用 `--keep-trackpad`，保留现有 `input.lua`，不添加手势或禁用标志。较新构建如加载默认手势，启用替代触控板方案时仍须在导入默认配置前设置 `omarchy_default_gestures = false`。
+本机 4.5 的截图包装器调用 Omasnap 并添加通知。历史实机 **`4.0.6-1`** 的包装器使用 grim、`omarchy-capture-region` 和 tensaku，可用当时已安装的独立 Omasnap。4.5 的默认模块不读取 `omarchy_default_gestures`。仅添加快捷键时使用 `--keep-trackpad`，继续使用现有 `input.lua`。
 
 Omarchy 已提供剪贴板历史、截图、多语言输入切换、合盖/合盖外接显示处理，以及 Apple SMC 合盖绑定。本技能仅添加少量可选的触控板/快捷键覆盖配置，不替换桌面软件栈，也不保证实现与 macOS 完全相同的行为。它绝不修改 `/usr/share/omarchy/`。
 
@@ -82,7 +82,7 @@ require("hypr.macbook_behavior")
 -- END omarchy-macbook-behavior overrides
 ```
 
-仅在选择更改触控板设置时，才会安装前面的标记块。覆盖模块在个人配置之后最后加载。使用相同选项重复运行不会再编辑文件或创建备份；偏好发生变化时，会替换本技能先前生成的选项。**`keep` 表示移除该类别之前由本技能管理的覆盖配置，让个人/上游行为保持原样**，而不是锁定先前生成的选项。所有类别均选择 keep 时，生成的覆盖配置不改变行为。安装脚本会拒绝作为符号链接的目标文件，以及缺少本技能所有权标头的已有覆盖文件。请保留该标头，并通过重新运行脚本调整偏好；手动自定义应放在独立的个人文件中。
+仅当选择更改触控板设置且已安装的默认模块读取该标志时，才写入前面的标记块。若升级后的模块不再读取它，重跑会移除旧标记块。覆盖模块在个人配置之后加载。同一安装环境下，以相同选项重跑不会再写入文件或创建备份。**`keep` 会移除该类别由本技能管理的覆盖，个人配置中的同名快捷键或手势仍可生效。** 安装脚本会拒绝符号链接目标及缺少所有权标头的已有覆盖文件。请保留该标头，手动自定义写在独立的个人文件中。
 
 脚本不会主动重新加载 Hyprland，但 Hyprland 可能在文件写入时自动重新加载。请立即在当前会话中检查并测试：
 
@@ -99,14 +99,15 @@ hyprctl binds -j
 - 启用新手势方案前，先移除个人文件中的旧手势注册。安装脚本会拒绝 `input.lua` 中明显的 `hl.gesture` 定义，但无法发现所有间接模块、别名或动态创建的手势；请检查完整的加载依赖关系。
 - 移除匹配 `omasnap` 的旧 `no_screen_share` 规则，包括其他模块中的规则。它们会破坏滚动截图。安装脚本会提示 `bindings.lua` 中常见的旧规则，但无法识别所有可能的规则。
 - 检查旧的截图绑定，按上述能力检测选择命令：新版封装使用 `omarchy-capture-screenshot`，旧版封装配合已安装的独立工具时使用 `omasnap`。不要在旧机器上强制切换到 grim/tensaku 工作流。只有用户希望移除时才删除旧 F12 映射；F12 不是当前上游的默认截图快捷键。
+- 如果同一个截图键或剪贴板别名同时出现在个人配置和托管模块中，先用 `hyprctl binds -j` 核对实际绑定。保留用户选择的组合键，经确认后将绑定集中到一个文件，并用 4.5 的官方包装器保留截图通知。
 - 保留/恢复 Fcitx 配置档案、语言引擎、Rime 自定义配置和个人词典。在只有一个分组的配置档案中，切换分组的绑定从来无法正确轮换组内引擎。请对照下文的原生行为，检查旧的 Super+Space/Control+Space 输入法覆盖配置。
 - 手动检查旧的 `/etc` drop-in 配置片段或 udev 规则；本安装脚本既不会安装，也不会删除它们。
 
 ## 手动配置触控板与快捷键
 
-备份 `hyprland.lua` 和所有将要编辑的文件。选择替代触控板方案时，在导入默认配置**之前**设置 `omarchy_default_gestures = false`，然后在 `hyprland.lua` 末尾加载独立的覆盖模块。仅从 [hyprland-input.lua](references/hyprland-input.lua) 复制所需设置，并明确选择 `natural_scroll` 的值。不要整体替换 `input.lua`。仅修改快捷键时，不添加触控板设置、手势或前置禁用标志。
+备份 `hyprland.lua` 和所有将编辑的文件。启用替代触控板方案时，先检查已安装的 `default/hypr/omarchy.lua` 是否用 `omarchy_default_gestures` 控制默认手势。只有该条件存在时，才在导入默认配置**之前**设置该标志为 `false`。在 `hyprland.lua` 末尾加载独立覆盖模块，并从 [hyprland-input.lua](references/hyprland-input.lua) 选择所需设置及 `natural_scroll` 值。
 
-已审查的较新 `quattro` 默认使用三指手势操作工作区/菜单/控制台，使用四指手势移动窗口/切换全屏。这些手势与三指拖拽以及本技能的四指手势注册冲突；上述实机 4.0.6-1 没有该默认手势模块，不存在这一上游冲突。前置标志会禁用较新构建的所有上游默认手势，但不会禁用个人手势。如果只想手动修改部分手势，已验证的 API 为 `hl.gesture({ fingers = 3, direction = "up", action = "unset" })`；请在重新定义前取消注册每个有冲突的方向。不要假定添加重复手势就会覆盖先前的注册。
+旧 `quattro` 快照曾默认注册三指和四指手势，该标志只控制上游模块。手动修改部分手势时，用 `hl.gesture({ fingers = 3, direction = "up", action = "unset" })` 这类调用，先取消注册有冲突的方向，再定义新手势。
 
 提供的替代方案如下：
 
@@ -128,9 +129,25 @@ Scratchpad 是特殊工作区，不是 macOS 的 Mission Control。硬件支持�
 ```bash
 omarchy-input-method status
 systemctl --user status omarchy-fcitx5.service
+fcitx5-remote -q   # 当前组
+fcitx5-remote -n   # 当前引擎
 ```
 
+Omarchy 的 `installed_method` 反映其已识别的预设。手动配置的 Rime 可以正常运行，此字段仍可能是 `none`。用 Fcitx 的当前组和引擎核对实际状态。
+
 原生 **Super+I / Super+Shift+I** 通过 Omarchy 的 shell 轮换输入语言。**Super+Space** 打开菜单。**Ctrl+Space** 是不吞键的终端前缀辅助绑定，用于在终端中请求直接输入；不要默认将其替换为会吞键的启动器/输入法绑定。macOS 上的 Cmd+Space 通常用于 Spotlight，并不是通用的输入源切换键。升级后的安装中可能仍有 Fcitx 自定义快捷键；应先检查，而不是强行设置新的快捷键。
+
+升级后若个人配置也用 `Ctrl+Space` 打开菜单，`hyprctl binds -j` 可能同时列出菜单和终端直输辅助。先确认用户希望保留哪项行为，再调整绑定。
+
+### 仅用 Super+I 切换
+
+只有用户选择了单一切换键时，才采用以下覆盖。需要反向切换或 Fcitx 专用键的用户可保留各自的绑定。
+
+1. 若要恢复原生菜单和终端辅助，从个人 Lua 配置移除取消 `SUPER + SPACE` 绑定及将菜单绑定到 `CTRL + SPACE` 的两行。在个人绑定中加入 `hl.unbind("SUPER + SHIFT + I")`，保留原生正向切换。
+2. 备份 Fcitx 的 `config`。按 [Fcitx 示例](references/fcitx5-config) 清空切换相关列表，保留候选、预编辑、已有输入法和词库。使用 `[Hotkey]` 下明确的空值，并移除对应旧列表段。单纯删除设置可能恢复 Fcitx 的默认切换键。
+3. 用 `fcitx5-remote --check -r` 重读设置，再运行 `hyprctl reload`、`hyprctl configerrors` 和 `hyprctl binds -j`。验证菜单、终端前缀，以及 `Super+I` 在现有引擎间的切换。可通过 `fcitx5-remote -n` 比对切换前后的引擎。Omarchy 的原生切换会轮换当前组内的引擎。
+
+### 安装和保留输入法引擎
 
 使用 `omarchy setup input`（或 `omarchy-setup-input`）启动当前原生交互式配置工具。确认语言，并检查拟议的软件包/配置更改。优先使用其支持的预设，包括可用时的日语 Mozc，而不是替换配置档案。不要仅为添加一种语言就使用重置/恢复默认值选项。
 
@@ -174,7 +191,7 @@ journalctl -b -u systemd-logind --no-pager
 - 在实际硬件上测试三指文本选择和窗口拖拽、所有选中的四指手势、滚动方向，以及打字时禁用触控板的行为。
 - 核对输出的截图命令，测试所选快捷键、标注、所选路径支持的通知/预览，以及**滚动截图**。直接调用路径不保证新版封装的通知行为。确保没有遗留的针对 `omasnap` 的 `no_screen_share` 规则。
 - 测试剪贴板快捷键别名和现有原生快捷键；检查 `hyprctl binds -j` 是否有冲突。
-- 如有可选输入法更改，测试每个引擎、原生正向/反向轮换切换、GUI/终端中的组字输入，以及终端前缀按键透传。检查用户服务，而不是再启动一个守护进程。
+- 如有可选输入法更改，测试每个引擎、所选的轮换方向、GUI/终端中的组字输入，以及终端前缀按键透传。检查当前用户服务。
 - 仓库检查：对每个脚本运行 `bash -n`，然后运行 `bash skills/omarchy-macbook-behavior/scripts/test-setup.sh`。沙箱测试使用临时 HOME、隔离的 `OMARCHY_PATH` 和白名单工具/模拟命令，覆盖新版封装、旧版直接调用、`OMARCHY_PATH` 与 `PATH` 的两种反向版本不匹配、缺少工具时无写入失败，以及保留触控板的快捷键安装；它们不能证明实际 Hyprland/硬件行为正常。
 
 要禁用本安装脚本所设置的选项，请使用 `--keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep` 重新运行。要彻底移除集成，请备份当前文件，仅移除 `hyprland.lua` 中的两个标记块，然后删除受管理的 `macbook_behavior.lua`。恢复 `.macbook-backup.*` 文件前，务必先与当前内容比较，以免丢失后续的个人修改。之后重新加载并检查配置错误。受管理块之外的旧版更改需要另行手动回滚。

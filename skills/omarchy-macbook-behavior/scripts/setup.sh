@@ -40,7 +40,7 @@ if [[ -z $scroll || -z $screenshot || -z $clipboard ]]; then
   if [[ -z $scroll ]]; then
     printf '%s\n' 'Trackpad: natural / traditional / keep' \
       'natural or traditional enables three-finger drag and palm rejection while typing.' \
-      'It replaces ALL upstream gestures: four fingers switch workspaces horizontally,' \
+      'It disables upstream gestures where configurable. Four fingers switch workspaces horizontally,' \
       'up/down toggle scratchpad, pinch-in opens the menu; three fingers are for drag.'
     read -r -p 'Trackpad choice (no default): ' choice || die 'No trackpad choice'
     case "$choice" in natural) scroll=true ;; traditional) scroll=false ;; keep) scroll=keep ;; *) die 'Invalid trackpad choice' ;; esac
@@ -76,7 +76,8 @@ if [[ -e $override ]]; then
 fi
 
 # Old releases wrote these directly into personal files. Do not silently delete them.
-if [[ $scroll != keep && -f $hypr/input.lua ]] && grep -q 'hl[.]gesture' "$hypr/input.lua"; then
+if [[ $scroll != keep && -f $hypr/input.lua ]] &&
+  awk '/^[[:space:]]*--/ { next } /hl[.]gesture/ { found = 1; exit } END { exit !found }' "$hypr/input.lua"; then
   die 'Personal input.lua contains gestures. Review/migrate them manually before enabling replacement gestures (see SKILL.md).'
 fi
 if [[ -f $hypr/bindings.lua ]] && grep -q 'omasnap' "$hypr/bindings.lua" && grep -q 'no_screen_share' "$hypr/bindings.lua"; then
@@ -96,11 +97,18 @@ if [[ $screenshot != keep ]]; then
   printf 'Screenshot command: %s\n' "$screenshot_command"
 fi
 
+disable_default_gestures=false
+defaults_source="${OMARCHY_PATH:-/usr/share/omarchy}/default/hypr/omarchy.lua"
+if [[ $scroll != keep && -r $defaults_source ]] &&
+  grep -Eq '^[[:space:]]*if[[:space:]]+(_G[.])?omarchy_default_gestures[[:space:]]*~=[[:space:]]*false[[:space:]]+then([[:space:]]|$)' "$defaults_source"; then
+  disable_default_gestures=true
+fi
+
 temp=$(mktemp -d "$hypr/.macbook-behavior.XXXXXX")
 trap 'rm -rf -- "$temp"' EXIT
 
 # Only our marked blocks are replaced. Unrecognized layouts fail before installation.
-awk -v trackpad="$scroll" '
+awk -v disable_default_gestures="$disable_default_gestures" '
   /^-- BEGIN omarchy-macbook-behavior (gestures|overrides)$/ {
     if (block) exit 1
     block = $4
@@ -114,7 +122,7 @@ awk -v trackpad="$scroll" '
   block { next }
   /^[[:space:]]*require\("default[.]hypr[.]omarchy"\)[[:space:]]*$/ {
     defaults++
-    if (trackpad != "keep") {
+    if (disable_default_gestures == "true") {
       print "-- BEGIN omarchy-macbook-behavior gestures"
       print "omarchy_default_gestures = false"
       print "-- END omarchy-macbook-behavior gestures"

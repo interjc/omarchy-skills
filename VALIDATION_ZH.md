@@ -2,9 +2,23 @@
 
 # 兼容性与实机验证
 
-## 审计基线
+## 2026-11-22 本机审计
 
-验证日期：**2026-10-31**。分别比较 Omarchy 最新稳定标签
+环境为 Omarchy `4.5.0-3`、Hyprland `0.56.2-4`、Omasnap `1.25.0`、ai-usagebar `1.52.3` 和 Fcitx5 `5.1.23`。检查使用已安装源码和只读会话查询。
+
+| 检查 | 结果 |
+| --- | --- |
+| Agent | 已安装的分发器和设置器支持原生 `agy`，默认菜单使用 `setup.default.agent.agy`。备份并归档旧 Gemini shim 和菜单项。单独的 `agy` 启动键及原有默认 Agent 均得到保留。 |
+| 截图和剪贴板 | 保留原有组合键。截图使用官方 Omasnap 包装器，包含 `--notify`。移除托管模块与个人配置之间的重复定义，实时查询确认每个组合键只有一条绑定。 |
+| Hyprland | `hyprctl configerrors` 为空。传统滚动、三指拖拽及打字时禁用触摸板均已生效。包内默认模块不读取 `omarchy_default_gestures`。 |
+| 输入法 | Fcitx5 服务运行中，Omarchy 预设报告 `none`，Fcitx 实际运行 Rime。经确认恢复 `Super+Space` 菜单和 `Ctrl+Space` 终端辅助，仅保留 `Super+I` 切换输入法。D-Bus 确认各 Fcitx 切换列表为空，原生切换命令实际从 Rime 切换到 Mozc，再恢复到 Rime。 |
+| 额度栏和电源 | Antigravity provider 已启用，实验性服务正在运行。logind 的 15 秒 inhibitor 延迟由 `omarchy-settings` 软件包提供。 |
+
+两套沙盒测试、4.5 安装包 Agent 脚本的模拟分发测试及 Shell/Lua 语法检查通过。上述本机迁移先备份，再重读 Fcitx 和 Hyprland 配置，`hyprctl configerrors` 为空。本次验证未实际按键、截图、查询额度或挂起。
+
+## 2026-10-31 历史审计基线
+
+当时分别比较 Omarchy 稳定标签
 [`v4.0.6`](https://github.com/omacom/omarchy/releases/tag/v4.0.6) 和默认分支
 `quattro` 的固定提交
 [`bda3aaf6955404712dbd46541e6c8a75a2b16b7c`](https://github.com/omacom/omarchy/tree/bda3aaf6955404712dbd46541e6c8a75a2b16b7c)。

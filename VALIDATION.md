@@ -2,9 +2,23 @@
 
 # Compatibility and Live-System Validation
 
-## Audit Baseline
+## 2026-11-22 Local Audit
 
-Validation date: **2026-10-31**. Comparisons were made against Omarchy's latest stable tag
+The environment used Omarchy `4.5.0-3`, Hyprland `0.56.2-4`, Omasnap `1.25.0`, ai-usagebar `1.52.3`, and Fcitx5 `5.1.23`. The audit used installed source and read-only session queries.
+
+| Check | Result |
+| --- | --- |
+| Agent | The installed dispatcher and setter support native `agy`, and the stock menu uses `setup.default.agent.agy`. The legacy Gemini shim and menu entry were backed up and archived. The separate `agy` shortcut and existing default agent were preserved. |
+| Screenshot and clipboard | Existing key chords were preserved. Screenshots now use the official Omasnap wrapper with `--notify`. Duplicate definitions between the managed module and personal bindings were removed, and the live query showed one binding per chord. |
+| Hyprland | `hyprctl configerrors` was empty. Traditional scrolling, three-finger drag, and disable-while-typing were effective. The packaged defaults do not read `omarchy_default_gestures`. |
+| Input methods | The Fcitx5 service was running Rime while Omarchy reported preset `none`. The confirmed settings restored the `Super+Space` menu and `Ctrl+Space` terminal helper, with `Super+I` as the sole switching key. D-Bus confirmed empty Fcitx switching lists. Invoking the native cycling command switched from Rime to Mozc, then back to Rime. |
+| Usage bar and power | The Antigravity provider was enabled and the experimental service was running. The `omarchy-settings` package provides the 15-second logind inhibitor delay. |
+
+Both sandbox suites, mocked dispatch against the packaged 4.5 Agent scripts, and Shell/Lua syntax checks passed. The local migration backed up files before reloading Fcitx and Hyprland, and `hyprctl configerrors` was empty. Physical key presses, screenshots, quota requests, and suspend were outside these checks.
+
+## 2026-10-31 Historical Audit Baseline
+
+The historical audit compared Omarchy's stable tag
 [`v4.0.6`](https://github.com/omacom/omarchy/releases/tag/v4.0.6) and the pinned commit of the default branch
 `quattro`,
 [`bda3aaf6955404712dbd46541e6c8a75a2b16b7c`](https://github.com/omacom/omarchy/tree/bda3aaf6955404712dbd46541e6c8a75a2b16b7c).

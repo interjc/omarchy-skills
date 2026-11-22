@@ -9,9 +9,9 @@ description: Configure confirmed MacBook-style trackpad and shortcut preferences
 
 ## Scope and Compatibility
 
-Audited against upstream `quattro` commit `bda3aaf6955404712dbd46541e6c8a75a2b16b7c`, dated **2026-10-31**. The latest stable tag checked separately was **v4.0.6**. This is a snapshot, not a promise that stable or older installs have the same APIs, shortcuts or systemd units. The automated path requires the current Lua configuration with `require("default.hypr.omarchy")`; older `.conf` installs need a separate, version-specific review.
+The **2026-11-22** audit used Omarchy **`4.5.0-3`** and Hyprland **`0.56.2-4`**. Automation requires the Lua configuration with `require("default.hypr.omarchy")`. Integrate older `.conf` setups manually for their specific version. [Omarchy v4.5.0 release](https://github.com/omacom/omarchy/releases/tag/v4.5.0)
 
-The live **4.0.6-1** install still uses grim, `omarchy-capture-region` and tensaku in `omarchy-capture-screenshot`, not `omasnap`; its separately installed `omasnap` supports `--save` / `--capture-fullscreen` but not `--notify`. This machine has no `default/hypr/gestures.lua` at all, so this release has no gesture conflict from that default module; newer `quattro` behavior must not be assumed here. Use `--keep-trackpad` for shortcut-only installation, preserving existing `input.lua` without adding gestures or a disable flag. On newer builds loading default gestures, the replacement trackpad scheme still requires `omarchy_default_gestures = false` before the defaults import.
+The installed 4.5 screenshot wrapper invokes Omasnap with notifications. The historical **`4.0.6-1`** wrapper used grim, `omarchy-capture-region` and tensaku, so that machine used its separately installed Omasnap. The 4.5 defaults do not read `omarchy_default_gestures`. Use `--keep-trackpad` for shortcut-only installation to keep using the existing `input.lua`.
 
 Omarchy already provides clipboard history, screenshot capture, multilingual input switching, lid/clamshell handling, and Apple SMC lid bindings. This skill adds a small, optional trackpad/shortcut override, not a replacement desktop stack or guaranteed macOS behavior. It never changes `/usr/share/omarchy/`.
 
@@ -82,7 +82,7 @@ require("hypr.macbook_behavior")
 -- END omarchy-macbook-behavior overrides
 ```
 
-The early block is installed only when trackpad changes are selected. The override loads last, after personal configuration. Identical reruns make no further edits/backups; changed preferences replace this skill's prior generated choices. **`keep` means remove that category's previous skill-managed overrides and leave personal/upstream behavior alone**, not freeze a previously generated choice. All-keep is a neutral generated override. Setup refuses symlinked target files and an existing override without its ownership header. Preserve that header and use reruns for preferences; manual customizations belong in separate personal files.
+Setup installs the early block only when trackpad changes are selected and the installed defaults read that flag. Rerunning after an upgrade removes the old block if the defaults no longer read it. The override loads after personal configuration. Reruns with the same options and installed defaults make no further writes or backups. **`keep` removes that category's skill-managed override, and any equivalent personal shortcut or gesture can still take effect.** Setup refuses symlinked targets and existing overrides without their ownership header. Keep that header and put manual customizations in separate personal files.
 
 The script does not explicitly reload Hyprland, but Hyprland may auto-reload on writes. Review and test immediately in the session:
 
@@ -99,14 +99,15 @@ Earlier versions of this skill overwrote `input.lua`, appended direct `omasnap`/
 - Remove old gesture registrations from personal files before enabling the new scheme. Setup rejects obvious `hl.gesture` definitions in `input.lua`, but cannot discover every indirect module, alias or dynamically created gesture; inspect the full load graph.
 - Remove legacy `no_screen_share` rules matching `omasnap`, including those in other modules. They break scrolling capture. The installer flags the common legacy case in `bindings.lua`, not every possible rule.
 - Review old screenshot bindings and select the command by capability as above: `omarchy-capture-screenshot` for the newer wrapper, or `omasnap` for a legacy wrapper with the standalone tool installed. Do not force the grim/tensaku workflow on older machines. Remove old F12 mappings only if the user wants that; F12 is not a current upstream screenshot default.
+- If a screenshot or clipboard shortcut appears in both personal configuration and the managed module, check the effective binding with `hyprctl binds -j`. Keep the user's chosen chord, consolidate the binding in one file after confirmation, and use the official 4.5 wrapper to retain screenshot notifications.
 - Preserve/restore Fcitx profiles, language engines, Rime customizations and personal dictionaries. Group-cycling bindings in a one-group profile never cycled its engines correctly. Review old Super+Space/Control+Space IME overrides against the native behavior below.
 - Review any old `/etc` drop-ins or udev rules manually; this installer neither installs nor deletes them.
 
 ## Manual Trackpad and Shortcuts
 
-Back up `hyprland.lua` and any file to be edited. When selecting the replacement trackpad scheme, set `omarchy_default_gestures = false` **before** the defaults import, then load a separate override at the end of `hyprland.lua`. Copy only the desired settings from [hyprland-input.lua](references/hyprland-input.lua), choosing `natural_scroll` explicitly. Do not replace `input.lua` wholesale. For shortcut-only changes, add no trackpad settings, gestures or early disable flag.
+Back up `hyprland.lua` and any file to be edited. When enabling the replacement trackpad scheme, look for an `omarchy_default_gestures` condition around the default gestures in the installed `default/hypr/omarchy.lua`. Only when that condition exists, set the flag to `false` **before** the defaults import. Load a separate override at the end of `hyprland.lua` and choose settings and a `natural_scroll` value from [hyprland-input.lua](references/hyprland-input.lua).
 
-The reviewed newer `quattro` default uses three fingers for workspace/menu/console gestures and four fingers for moving windows/fullscreen. These conflict with three-finger drag and this skill's four-finger registrations; the live 4.0.6-1 install above lacks that default gesture module and has no such upstream conflict. The early flag disables all upstream default gestures on newer builds, not personal ones. For selective manual changes, the verified API is `hl.gesture({ fingers = 3, direction = "up", action = "unset" })`; unset every conflicting direction before redefining it. Do not assume adding a duplicate gesture overrides the earlier registration.
+The historical `quattro` snapshot registered default three- and four-finger gestures. The flag controls that upstream module. For selective manual changes, use a call such as `hl.gesture({ fingers = 3, direction = "up", action = "unset" })` to unset each conflicting direction before defining the new gesture.
 
 The supplied replacement scheme is:
 
@@ -128,9 +129,25 @@ Current Omarchy runs Fcitx under the **session user unit** `omarchy-fcitx5.servi
 ```bash
 omarchy-input-method status
 systemctl --user status omarchy-fcitx5.service
+fcitx5-remote -q   # Current group
+fcitx5-remote -n   # Current engine
 ```
 
+Omarchy's `installed_method` reflects the preset it recognizes. A configured Rime engine can run while this field reports `none`. Check Fcitx's current group and engine for its active state.
+
 Native **Super+I / Super+Shift+I** cycle input languages through Omarchy's shell. **Super+Space** opens the menu. **Ctrl+Space** is a non-consuming terminal-prefix helper that requests direct input in terminals; do not replace it with a consuming launcher/IME binding by default. Cmd+Space is commonly Spotlight on macOS, not a universal input-source toggle. Fcitx custom hotkeys may still exist on upgraded installs; inspect them instead of forcing new ones.
+
+If personal configuration also uses `Ctrl+Space` for the menu, `hyprctl binds -j` can list both the menu and the terminal helper after an upgrade. Confirm the user's intended behavior before adjusting either binding.
+
+### Switch with Super+I only
+
+Use these overrides only when the user chooses a single switching key. Users who want reverse cycling or dedicated Fcitx keys can keep those bindings.
+
+1. To restore the stock menu and terminal helper, remove the personal Lua lines that unbind `SUPER + SPACE` and bind the menu to `CTRL + SPACE`. Add `hl.unbind("SUPER + SHIFT + I")` to personal bindings and keep native forward cycling.
+2. Back up the Fcitx `config`. Clear switching lists using the [Fcitx example](references/fcitx5-config). Preserve candidate and preedit keys, installed engines, and dictionaries. Set explicit empty values under `[Hotkey]` and remove the corresponding old list sections. Deleting the settings alone can restore Fcitx's default switching keys.
+3. Reload settings with `fcitx5-remote --check -r`, then run `hyprctl reload`, `hyprctl configerrors`, and `hyprctl binds -j`. Verify the menu, the terminal prefix, and cycling among existing engines with `Super+I`. Use `fcitx5-remote -n` to compare the engine before and after cycling. Omarchy's native shortcut cycles engines within the current group.
+
+### Install and preserve input engines
 
 Use `omarchy setup input` (or `omarchy-setup-input`) for the current native interactive configurator. Confirm languages and inspect the proposed package/configuration changes. Prefer its supported presets, including Japanese Mozc where available, over a replacement profile. Do not use reset/defaults options merely to add a language.
 
@@ -174,7 +191,7 @@ Only after that diagnosis and explicit opt-in, consider the [udev example](refer
 - Test three-finger text selection and window drag, all selected four-finger gestures, scroll direction and disable-while-typing on actual hardware.
 - Check the reported screenshot command and test selected shortcuts, annotation, notifications/preview supported by the selected path, and **scrolling capture**. The direct path does not promise newer-wrapper notification behavior. Ensure no inherited `omasnap` `no_screen_share` rule remains.
 - Test clipboard alias and existing native shortcuts; review `hyprctl binds -j` for conflicts.
-- For optional IME changes, test each engine, native forward/backward cycling, GUI/terminal composition and terminal-prefix passthrough. Check the user service rather than spawning a second daemon.
+- For optional IME changes, test each engine, the selected cycling directions, GUI/terminal composition, and terminal-prefix passthrough. Check the existing user service.
 - Repository checks: run `bash -n` on each script, then `bash skills/omarchy-macbook-behavior/scripts/test-setup.sh`. The sandbox tests use a temporary HOME, isolated `OMARCHY_PATH` and whitelisted utilities/mocked commands, covering newer wrappers, legacy direct invocation, version mismatches between `OMARCHY_PATH` and `PATH` in both directions, missing-tool/no-write failures and shortcut-only installation preserving the trackpad; they do not prove live Hyprland/hardware behavior.
 
 To disable this installer's choices, rerun with `--keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep`. To remove the integration completely, back up current files, remove only both marked blocks in `hyprland.lua`, then remove the managed `macbook_behavior.lua`. Restore a `.macbook-backup.*` file only after comparing it with current content so later personal edits are not lost. Reload and inspect configuration errors afterward. Legacy changes outside the managed blocks require separate manual rollback.

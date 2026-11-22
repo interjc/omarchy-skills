@@ -9,11 +9,9 @@ description: 将 Antigravity CLI（agy）接入 Omarchy，优先使用原生默�
 
 ## 审计依据与架构
 
-本技能于 **2026-10-31** 对照 Omarchy 默认分支 `quattro` 的提交
-`bda3aaf6955404712dbd46541e6c8a75a2b16b7c` 和已获取的最新稳定标签 `v4.0.6` 核对。
-这两个快照不同，不能把默认分支的能力说成稳定版已经具备：
+**2026-11-22** 核对了本机 Omarchy **`4.5.0-3`**。原生支持已进入发行版，旧版 Gemini 路径仍按已安装实现检测。[Omarchy v4.5.0 发布记录](https://github.com/omacom/omarchy/releases/tag/v4.5.0)
 
-| 检查项 | quattro 提交 | v4.0.6 |
+| 检查项 | 本机 `4.5.0-3` | 历史 `v4.0.6` |
 | --- | --- | --- |
 | `omarchy-agent` 分发 | 原生 `agy`，使用 `--dangerously-skip-permissions` | `gemini --yolo`，没有 `agy` 分支 |
 | `omarchy-default-agent` | 接受 `agy`，并把 `gemini` 等别名规范化为 `agy` | 接受并保存 `gemini`，不接受 `agy` |
@@ -35,9 +33,9 @@ description: 将 Antigravity CLI（agy）接入 Omarchy，优先使用原生默�
 Omarchy 的原生分发和旧版 shim 都会跳过 agent 的权限询问；不能把这一点隐瞒为普通启动。
 保留现有快捷键、菜单和其他 provider，不默认覆盖用户习惯。
 
-后台 stream-json 会话是**实验性可选项**，不添加权限绕过参数，不保证初始化用量接口，
-也不保证常驻可用、零 CPU 或固定内存占用。先用已安装 `agy --help` 核对参数和登录状态，
-再确认是否启用。它随用户会话启动，不自动启用 lingering。
+如果目标是查询额度，先验证下文的用量栏常规查询路径。后台 stream-json 会话是**实验性可选项**。
+先用已安装的 `agy --help` 核对参数并检查登录状态，再确认是否启用。
+服务随用户会话启动，使用常规 CLI 权限。额度查询应单独验证。
 
 ## 快速开始
 
@@ -88,7 +86,8 @@ bash skills/omarchy-agent-agy/scripts/setup.sh --default-agent keep --daemon ena
 ### 默认 Agent 与菜单
 
 只读检查安装目录中的 `bin/omarchy-agent`、`bin/omarchy-default-agent`，对照上面的证据表。
-原生版本使用 `omarchy-default-agent agy`，无需菜单 override。
+只有用户希望将 Antigravity 设为默认项时，才使用原生 `omarchy default agent agy`，该命令也会启动 Agent。
+用户可以保留现有默认 Agent。确认是否已有独立的 Antigravity 绑定，再决定是否调整菜单或快捷键。
 旧版可使用经审阅的 `references/gemini-wrapper.sh` 作为 `~/.local/bin/gemini`，赋予可执行权限，
 并仅在已确认的旧版中把默认文件 `~/.config/omarchy/defaults/agent` 设为 `gemini`。
 任何替换前先备份；已有 shim 冲突时先审阅，不盲目复制。
@@ -101,8 +100,9 @@ bash skills/omarchy-agent-agy/scripts/setup.sh --default-agent keep --daemon ena
 `~/.config/omarchy/extensions/omarchy-menu.jsonc`，再把
 [`references/omarchy-menu.jsonc`](references/omarchy-menu.jsonc) 的成员手工合入现有 JSONC
 对象，保留注释和其他条目。不把示例覆盖到现有文件，不声称脚本已经完成合并。
-菜单会热重载。升级为原生支持后重新检测、使用原生 setter，并审阅旧菜单 override 和
-shim 是否还被其他用途依赖，再决定是否归档；不要自动删除用户文件。
+菜单会热重载。升级到原生支持后，检查旧 `setup.default.agent.gemini` 项及其对 `gemini` 的勾选判断。
+4.5 原生项为 `setup.default.agent.agy`，原生设置器将 `gemini` 别名归一为 `agy`。检查是否有其他脚本依赖旧 shim，
+确认后再归档旧菜单项和包装器。
 
 ### 快捷键
 
@@ -124,6 +124,10 @@ runner 保持 stdin 打开，不发送请求；不要据此断言 Language Serve
 手动撤销启用使用 `systemctl --user disable --now agy-daemon.service`。
 
 ### 用量栏，需单独批准
+
+ai-usagebar `1.52.3` 可通过已登录的 `agy -p "/quota"` 获取额度，也支持其他查询来源。
+先用 `ai-usagebar --vendor antigravity` 验证实际结果。已有实验性服务时，只有在用户同意后才停用它来验证独立查询。
+[ai-usagebar 1.52.3 的 Antigravity 说明](https://github.com/akitaonrails/ai-usagebar/blob/v1.52.3/README.md#authentication)
 
 第三方插件在 shell 中执行非沙箱代码。先审阅并获得安装和布局调整许可，再运行：
 
@@ -180,7 +184,9 @@ bash -n skills/omarchy-agent-agy/scripts/setup.sh
 bash -n skills/omarchy-agent-agy/references/gemini-wrapper.sh
 bash -n skills/omarchy-agent-agy/references/agy-daemon.sh
 bash skills/omarchy-agent-agy/scripts/test.sh
-# 可选：对已有只读 checkout 的两个固定上游快照执行相同 mock 验证。
+# 可选：复制本机打包的原生 Agent 脚本，用模拟命令验证。
+bash skills/omarchy-agent-agy/scripts/test.sh --installed
+# 或对已有只读 checkout 的两个固定上游快照验证。
 bash skills/omarchy-agent-agy/scripts/test.sh /tmp/opencode/omarchy-latest
 ```
 

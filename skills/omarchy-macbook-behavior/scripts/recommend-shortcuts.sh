@@ -11,9 +11,8 @@ else
 fi
 
 printf '\n%s\n' \
-  'Upstream snapshot, NOT an assertion about your effective bindings:' \
-  'Omarchy quattro bda3aaf6955404712dbd46541e6c8a75a2b16b7c (2026-10-31).' \
-  'Latest stable tag checked separately: v4.0.6; the Lua workflow targets quattro.'
+  'Packaged defaults from Omarchy 4.5.0-3 (v4.5.0):' \
+  'Your active bindings are listed above when the session is available.'
 printf '\n%-24s %s\n' 'Action' 'Snapshot binding'
 printf '%-24s %s\n' \
   'Screenshot' 'Print / Super+Ctrl+Alt+C -> omarchy-capture-screenshot' \
@@ -27,11 +26,11 @@ printf '%-24s %s\n' \
   'Audio panel' 'Super+Ctrl+A'
 
 printf '\n%s\n' \
-  'Optional choices, not universal recommendations:' \
+  'Optional shortcut choices:' \
   '  Super+Ctrl+A screenshot replaces Audio; use the menu for Audio afterward.' \
   '  Alt+Shift+4 is another screenshot chord, not literal macOS Cmd+Shift+4.' \
   '  Super+Shift+Z adds clipboard history, replacing any existing use of that chord.' \
-  'Check the live bindings above before choosing. F12 is not a snapshot screenshot default.' \
+  'Check the live bindings above before choosing. The packaged defaults do not bind F12 to screenshots.' \
   'Keep Super+Space for the menu and Ctrl+Space for terminal prefixes by default.' \
   'This auditor never edits files or prompts to apply. Use setup.sh for confirmed choices.'
 

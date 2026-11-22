@@ -31,4 +31,7 @@
 -- on the live 4.0.6-1 machine's CLI), --save or --capture-fullscreen to these bindings.
 -- No extra overlay layer rule is needed.
 -- Do NOT set no_screen_share on omasnap: scrolling capture needs to capture its overlay.
--- Keep native Super+I / Super+Shift+I language cycling and Ctrl+Space terminal prefix.
+-- Keep Ctrl+Space for the terminal prefix if selected.
+-- Optional: keep only Super+I for language cycling and clear Fcitx switching lists
+-- as described in SKILL.md.
+-- hl.unbind("SUPER + SHIFT + I")

@@ -8,3 +8,19 @@
 # Optional per-window input state: merge ShareInputState=No into an EXISTING
 # [Behavior] section only after confirming that preference; do not replace the file.
 # Single Shift toggling is optional engine/user behavior, not macOS parity.
+
+# Optional Super+I-only switching. Merge these keys into the existing [Hotkey]
+# section and remove matching old list sections, such as [Hotkey/TriggerKeys].
+# Keep candidate/page/preedit bindings, engine settings, profile and dictionaries.
+# Confirm the choice before disabling dedicated language keys or Shift toggling.
+#
+# [Hotkey]
+# TriggerKeys=
+# ActivateKeys=
+# DeactivateKeys=
+# AltTriggerKeys=
+# EnumerateWithTriggerKeys=False
+# EnumerateForwardKeys=
+# EnumerateBackwardKeys=
+# EnumerateGroupForwardKeys=
+# EnumerateGroupBackwardKeys=
