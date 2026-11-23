@@ -35,3 +35,12 @@
 -- Optional: keep only Super+I for language cycling and clear Fcitx switching lists
 -- as described in SKILL.md.
 -- hl.unbind("SUPER + SHIFT + I")
+
+-- Optional macOS-style text deletion (Option+Delete = word, Super+Delete = line,
+-- relocating stock SUPER+BACKSPACE window transparency toggle to SUPER+ALT+BACKSPACE):
+-- see references/hyprland-text-deletion.lua (or pass --text-deletion macos-alt|macos-ctrl-w to setup.sh).
+
+-- Optional macOS-style cursor navigation & selection (Option+Left/Right = word,
+-- Super+Arrows = line/document, relocating stock SUPER (+ SHIFT) + arrows window focus/swap
+-- to CTRL + ALT (+ SHIFT) + arrows):
+-- see references/hyprland-cursor-navigation.lua (or pass --cursor-navigation option-only|macos-full to setup.sh).

@@ -6,7 +6,10 @@ usage() {
     'Usage: setup.sh [--natural-scroll | --traditional-scroll | --keep-trackpad]' \
     '                --screenshot-hotkey keep|super-ctrl-a|alt-shift-4|both' \
     '                --clipboard-hotkey keep|super-shift-z' \
+    '                [--text-deletion keep|macos-alt|macos-ctrl-w]' \
+    '                [--cursor-navigation keep|option-only|macos-full]' \
     'Missing preferences are prompted on a TTY, or rejected without any writes.' \
+    '(--text-deletion and --cursor-navigation default to keep in noninteractive runs when omitted.)' \
     'Selecting a scroll direction enables three-finger drag, disable-while-typing,' \
     'and replacement four-finger gestures. No packages, IME, power or udev changes.' \
     "keep removes this installer's previous overrides, not your personal settings."
@@ -17,14 +20,24 @@ die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 scroll=''
 screenshot=''
 clipboard=''
+text_deletion=''
+cursor_navigation=''
 while (($#)); do
   case "$1" in
     --natural-scroll) scroll=true; shift ;;
     --traditional-scroll) scroll=false; shift ;;
     --keep-trackpad) scroll=keep; shift ;;
-    --screenshot-hotkey|--clipboard-hotkey)
+    --screenshot-hotkey|--clipboard-hotkey|--text-deletion|--cursor-navigation)
       (($# >= 2)) && [[ $2 != --* ]] || die "Missing value for $1"
-      if [[ $1 == --screenshot-hotkey ]]; then screenshot=$2; else clipboard=$2; fi
+      if [[ $1 == --screenshot-hotkey ]]; then
+        screenshot=$2
+      elif [[ $1 == --clipboard-hotkey ]]; then
+        clipboard=$2
+      elif [[ $1 == --text-deletion ]]; then
+        text_deletion=$2
+      else
+        cursor_navigation=$2
+      fi
       shift 2
       ;;
     --help|-h) usage; exit 0 ;;
@@ -34,6 +47,8 @@ done
 
 case "$screenshot" in ''|keep|super-ctrl-a|alt-shift-4|both) ;; *) die 'Invalid screenshot hotkey' ;; esac
 case "$clipboard" in ''|keep|super-shift-z) ;; *) die 'Invalid clipboard hotkey' ;; esac
+case "$text_deletion" in ''|keep|macos-alt|macos-ctrl-w) ;; *) die 'Invalid text deletion option' ;; esac
+case "$cursor_navigation" in ''|keep|option-only|macos-full) ;; *) die 'Invalid cursor navigation option' ;; esac
 
 if [[ -z $scroll || -z $screenshot || -z $clipboard ]]; then
   [[ -t 0 && -t 1 ]] || die 'Noninteractive setup requires explicit trackpad, screenshot and clipboard preferences; see --help.'
@@ -56,9 +71,29 @@ if [[ -z $scroll || -z $screenshot || -z $clipboard ]]; then
     read -r -p 'Clipboard choice (no default): ' clipboard || die 'No clipboard choice'
     case "$clipboard" in keep|super-shift-z) ;; *) die 'Invalid clipboard choice' ;; esac
   fi
-  printf 'Apply trackpad=%s, screenshot=%s, clipboard=%s?\n' "$scroll" "$screenshot" "$clipboard"
+  if [[ -z $text_deletion ]]; then
+    printf '%s\n' 'Text deletion: keep / macos-alt (recommended) / macos-ctrl-w' \
+      'Maps Option+Delete to word delete (GUI: Ctrl+BackSpace; Terminal: Alt+BackSpace or Ctrl+W)' \
+      'and Super+Delete to line delete (GUI: Shift+Home + BackSpace; Terminal: Ctrl+U).' \
+      'Relocates stock SUPER+BACKSPACE (Toggle window transparency) to SUPER+ALT+BACKSPACE.'
+    read -r -p 'Text deletion choice (no default): ' text_deletion || die 'No text deletion choice'
+    case "$text_deletion" in keep|macos-alt|macos-ctrl-w) ;; *) die 'Invalid text deletion choice' ;; esac
+  fi
+  if [[ -z $cursor_navigation ]]; then
+    printf '%s\n' 'Cursor navigation: keep / option-only / macos-full' \
+      'option-only maps Option+Left/Right (+Shift) to word move/select without touching SUPER+arrows.' \
+      'macos-full also maps Super+Arrows (+Shift) to line/document move/select and relocates' \
+      'stock Hyprland window focus/swap to CTRL+ALT+Arrows / CTRL+ALT+SHIFT+Arrows.'
+    read -r -p 'Cursor navigation choice (no default): ' cursor_navigation || die 'No cursor navigation choice'
+    case "$cursor_navigation" in keep|option-only|macos-full) ;; *) die 'Invalid cursor navigation choice' ;; esac
+  fi
+  printf 'Apply trackpad=%s, screenshot=%s, clipboard=%s, text_deletion=%s, cursor_navigation=%s?\n' \
+    "$scroll" "$screenshot" "$clipboard" "$text_deletion" "$cursor_navigation"
   read -r -p 'Proceed [y/N]: ' confirm || die 'No confirmation'
   [[ $confirm == y || $confirm == Y ]] || { printf 'No changes applied.\n'; exit 0; }
+else
+  [[ -n $text_deletion ]] || text_deletion=keep
+  [[ -n $cursor_navigation ]] || cursor_navigation=keep
 fi
 
 script_dir=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
@@ -152,6 +187,18 @@ fi
 if [[ $clipboard == super-shift-z ]]; then
   printf '%s\n' 'hl.unbind("SUPER + SHIFT + Z")' \
     'o.bind("SUPER + SHIFT + Z", "Clipboard history", "omarchy-shell shell toggle omarchy.clipboard")' >> "$temp/macbook_behavior.lua"
+fi
+if [[ $text_deletion == macos-alt ]]; then
+  cat "$references/hyprland-text-deletion.lua" >> "$temp/macbook_behavior.lua"
+elif [[ $text_deletion == macos-ctrl-w ]]; then
+  sed 's/macbook_send_key_pulse("ALT", "BackSpace", 15)/macbook_send_key_pulse("CTRL", "W", 15)/' \
+    "$references/hyprland-text-deletion.lua" >> "$temp/macbook_behavior.lua"
+fi
+if [[ $cursor_navigation == macos-full ]]; then
+  cat "$references/hyprland-cursor-navigation.lua" >> "$temp/macbook_behavior.lua"
+elif [[ $cursor_navigation == option-only ]]; then
+  sed '/^-- \[BEGIN macos-full\]$/,/^-- \[END macos-full\]$/d' \
+    "$references/hyprland-cursor-navigation.lua" >> "$temp/macbook_behavior.lua"
 fi
 
 for file in macbook_behavior.lua hyprland.lua; do

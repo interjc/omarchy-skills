@@ -29,6 +29,7 @@ npx skills add interjc/omarchy-skills
 # 或者直接安装指定技能
 npx skills add interjc/omarchy-skills --skill omarchy-agent-agy
 npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
+npx skills add interjc/omarchy-skills --skill omarchy-browser-use
 ```
 
 ---
@@ -39,6 +40,7 @@ npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
 | :--- | :--- | :--- |
 | [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL_ZH.md) | 按实际能力选择原生 `agy` 或经批准的旧版兼容，可选接入额度栏。 | `4.5.0-3` 包装脚本回归测试；`4.0.6-1` 历史实测 |
 | [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL_ZH.md) | 按确认偏好添加 Lua 触摸板与快捷键覆盖；输入法、电源及硬件诊断另行手动处理。 | `4.5.0-3` 本机配置审计与沙盒测试；`4.0.6-1` 历史实测 |
+| [`omarchy-browser-use`](./skills/omarchy-browser-use/SKILL_ZH.md) | 通过 `opencode browse` 与 Chrome 扩展让 AI Agent 在本地开发中直接操控真实 Chrome（支持 MCP 与 CLI）。 | `4.5.0-3` 实机配对与导航验证（`browse 0.1.5`）+ 离线回归测试 |
 
 ---
 
@@ -83,7 +85,7 @@ bash skills/omarchy-agent-agy/scripts/setup.sh
 #### 核心亮点
 - **偏好先行**：选择自然滚动、传统滚动或保留触摸板，再分别选择截图与剪贴板快捷键；终端中交互确认，非交互必须提供全部选择。
 - **托管 Lua 覆盖**：选择滚动方向同时启用三指拖拽、打字时禁用触摸板及替代四指手势。只有已安装的默认模块读取禁用标志时才设置它。脚本备份改动，管理独立模块和标记块，并保留个人 `input.lua`/`bindings.lua`。
-- **先审计键位**：只读脚本区分实时绑定与上游快照。快照默认截图为 `Print` / `SUPER + CTRL + ALT + C`（不是 F12），剪贴板历史为 `SUPER + CTRL + V`；可选 `SUPER + CTRL + A` 截图会替换音频键，`ALT + SHIFT + 4` 是替代组合，`SUPER + SHIFT + Z` 仅为可选剪贴板别名。检查 PATH 中实际截图包装器，确认调用 Omasnap 才使用 `omarchy-capture-screenshot`，旧版否则保留已安装的 `omasnap`。
+- **先审计键位**：只读脚本区分实时绑定与上游快照。快照默认截图为 `Print` / `SUPER + CTRL + ALT + C`（不是 F12），剪贴板历史为 `SUPER + CTRL + V`；可选 `SUPER + CTRL + A` 截图会替换音频键，`ALT + SHIFT + 4` 是替代组合，`SUPER + SHIFT + Z` 仅为可选剪贴板别名。可选 `--text-deletion macos-alt|macos-ctrl-w` 与 `--cursor-navigation option-only|macos-full` 启用 macOS 风格删词/删行与方向键移动/选中（自动区分终端与 GUI，并将窗口透明度与窗口焦点/交换迁至无冲突键位）。检查 PATH 中实际截图包装器，确认调用 Omasnap 才使用 `omarchy-capture-screenshot`，旧版否则保留已安装的 `omasnap`。
 - **输入法另行确认**：快照原生 `SUPER + I` / `SUPER + SHIFT + I` 切换输入语言，`SUPER + SPACE` 打开菜单，`CTRL + SPACE` 保留为不吞键的终端前缀辅助。Mozc 优先用原生配置器；Rime/雾凇按需手动合并，组切换不等于组内引擎切换。
 - **不是全套安装器**：不安装软件包、不写系统目录、不配置 Fcitx/Rime、电源、udev、logind 或空闲定时器。合盖与外接屏优先检查原生行为；手动可选步骤需单独诊断与批准，旧版技能遗留改动不会自动撤销。
 
@@ -93,6 +95,26 @@ bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
 
 # 仅配置确认后的触摸板与快捷键偏好
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
+```
+
+---
+
+### 3. `omarchy-browser-use`：本地开发真实 Chrome 浏览器操控
+
+> **目标**：在 Omarchy 本地开发环境中通过 `opencode browse` 与 Chrome 扩展让 AI Agent 直接操作你的真实 Chrome 浏览器（保留登录态、Cookie 与本地 dev server 上下文），同时支持 MCP 与 CLI。
+
+#### 核心亮点
+- **零侵入用户级方案**：仅安装 `~/.local/bin/browse` 及用户目录状态文件，不修改 `/usr/share/omarchy/` 或 `/etc/`，卸载时一键清理。
+- **MCP + CLI 双通道**：重启运行中的 Agent（Antigravity、OpenCode、Claude Code、Codex 等）后自动加载 MCP；未重启前也可直接通过 `browse navigate / snapshot / console / network / screenshot` 命令行实时调试。
+- **偏好确认与幂等脚本**：支持只读 `--status` 审计、按需指定接入的 Agent 列表（`all`、`none`、`keep` 或逗号列表）以及交互/非交互配对流程。
+- **清晰的安全边界**：内置 `--keepVisible --keepOpen` 本地调试提示、`--allowedOrigins` / `--readOnly` 约束、登录与验证码 `handoff` 人工接管，以及终端沙箱回环限制说明。
+
+```bash
+# 只读检查 browse 二进制、本地中继与 Chrome 扩展配对状态
+bash skills/omarchy-browser-use/scripts/setup.sh --status
+
+# 交互式确认安装、Agent 范围与 Chrome 配对
+bash skills/omarchy-browser-use/scripts/setup.sh
 ```
 
 以上脚本路径以仓库根目录为准；通过 skills CLI 安装后，请从实际安装的技能目录运行 `scripts/setup.sh`。完整选项、手动步骤、验证与回滚见各 `SKILL.md`。

@@ -74,6 +74,10 @@ unchanged_failure --clipboard-hotkey
 unchanged_failure --screenshot-hotkey --natural-scroll
 unchanged_failure --natural-scroll --screenshot-hotkey invalid --clipboard-hotkey keep
 unchanged_failure --natural-scroll --screenshot-hotkey keep --clipboard-hotkey invalid
+unchanged_failure --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep --text-deletion invalid
+unchanged_failure --text-deletion
+unchanged_failure --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep --cursor-navigation invalid
+unchanged_failure --cursor-navigation
 unchanged_failure --unknown
 unchanged_failure --natural-scroll --screenshot-hotkey keep --clipboard-hotkey keep --unknown
 
@@ -290,15 +294,170 @@ if bash "$scripts/recommend-shortcuts.sh" --apply > "$root/output" 2>&1; then
   printf 'Auditor accepted unknown arguments\n' >&2; exit 1
 fi
 
+# Exercise macOS-style text deletion modes (macos-alt, macos-ctrl-w, keep) and Lua execution.
+for td_mode in macos-alt macos-ctrl-w keep; do
+  bash "$scripts/setup.sh" --keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep --text-deletion "$td_mode" > "$root/output"
+  if [[ $td_mode == keep ]]; then
+    if grep -q 'Delete previous word' "$hypr/macbook_behavior.lua"; then
+      printf 'Text deletion keep generated bindings\n' >&2; exit 1
+    fi
+  else
+    grep -q 'o.rebind("ALT + BACKSPACE", "Delete previous word"' "$hypr/macbook_behavior.lua"
+    grep -q 'o.rebind("SUPER + ALT + BACKSPACE", "Toggle transparency on a window"' "$hypr/macbook_behavior.lua"
+    grep -q 'o.rebind("SUPER + BACKSPACE", "Delete to start of line"' "$hypr/macbook_behavior.lua"
+    if [[ $td_mode == macos-alt ]]; then
+      grep -q 'macbook_send_key_pulse("ALT", "BackSpace", 15)' "$hypr/macbook_behavior.lua"
+    else
+      grep -q 'macbook_send_key_pulse("CTRL", "W", 15)' "$hypr/macbook_behavior.lua"
+    fi
+    if command -v lua >/dev/null 2>&1; then
+      lua - "$hypr/macbook_behavior.lua" "$td_mode" <<'LUA'
+local path, mode = arg[1], arg[2]
+local rebinds, dispatched, is_term = {}, {}, false
+hl = {
+  get_active_window = function()
+    return { tags = is_term and { "terminal*" } or {} }
+  end,
+  dispatch = function(ev) table.insert(dispatched, ev) end,
+  dsp = { send_key_state = function(ev) return ev end },
+  timer = function(fn) fn() end,
+}
+o = {
+  rebind = function(key, _, action, opts)
+    rebinds[key] = { action = action, opts = opts or {} }
+  end,
+}
+dofile(path)
+assert(rebinds["ALT + BACKSPACE"] and rebinds["ALT + BACKSPACE"].opts.repeating == true)
+assert(rebinds["SUPER + BACKSPACE"] and rebinds["SUPER + ALT + BACKSPACE"])
+-- GUI path
+is_term = false
+dispatched = {}
+rebinds["ALT + BACKSPACE"].action()
+assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "BackSpace")
+dispatched = {}
+rebinds["SUPER + BACKSPACE"].action()
+assert(#dispatched == 4 and dispatched[1].mods == "SHIFT" and dispatched[1].key == "Home" and dispatched[3].mods == "" and dispatched[3].key == "BackSpace")
+-- Terminal path
+is_term = true
+dispatched = {}
+rebinds["ALT + BACKSPACE"].action()
+if mode == "macos-alt" then
+  assert(#dispatched == 2 and dispatched[1].mods == "ALT" and dispatched[1].key == "BackSpace")
+else
+  assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "W")
+end
+dispatched = {}
+rebinds["SUPER + BACKSPACE"].action()
+assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "U")
+LUA
+    fi
+  fi
+  before=$(snapshot)
+  bash "$scripts/setup.sh" --keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep --text-deletion "$td_mode" > "$root/output"
+  [[ $(snapshot) == "$before" ]] || { printf 'Text deletion rerun is not idempotent\n' >&2; exit 1; }
+done
+
+# Exercise macOS-style cursor navigation modes (macos-full, option-only, keep) and Lua execution.
+for nav_mode in macos-full option-only keep; do
+  bash "$scripts/setup.sh" --keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep \
+    --text-deletion macos-alt --cursor-navigation "$nav_mode" > "$root/output"
+  if [[ $nav_mode == keep ]]; then
+    if grep -q 'Move cursor one word left' "$hypr/macbook_behavior.lua"; then
+      printf 'Cursor navigation keep generated bindings\n' >&2; exit 1
+    fi
+  else
+    grep -q 'o.rebind("ALT + LEFT", "Move cursor one word left"' "$hypr/macbook_behavior.lua"
+    grep -q 'o.rebind("ALT + SHIFT + RIGHT", "Select one word right"' "$hypr/macbook_behavior.lua"
+    if [[ $nav_mode == option-only ]]; then
+      if grep -q 'CTRL + ALT + LEFT\|SUPER + LEFT' "$hypr/macbook_behavior.lua"; then
+        printf 'option-only mode should not rebind SUPER or CTRL+ALT arrows\n' >&2; exit 1
+      fi
+    else
+      grep -q 'o.rebind("CTRL + ALT + LEFT", "Focus on left window"' "$hypr/macbook_behavior.lua"
+      grep -q 'o.rebind("CTRL + ALT + SHIFT + DOWN", "Swap window down"' "$hypr/macbook_behavior.lua"
+      grep -q 'o.rebind("SUPER + LEFT", "Move cursor to start of line"' "$hypr/macbook_behavior.lua"
+      grep -q 'o.rebind("SUPER + SHIFT + DOWN", "Select to bottom of document"' "$hypr/macbook_behavior.lua"
+    fi
+    if command -v lua >/dev/null 2>&1; then
+      lua - "$hypr/macbook_behavior.lua" "$nav_mode" <<'LUA'
+local path, mode = arg[1], arg[2]
+local rebinds, dispatched, is_term = {}, {}, false
+hl = {
+  get_active_window = function()
+    return { tags = is_term and { "terminal*" } or {} }
+  end,
+  dispatch = function(ev) table.insert(dispatched, ev) end,
+  dsp = {
+    send_key_state = function(ev) return ev end,
+    focus = function(opts) return { kind = "focus", dir = opts.direction } end,
+    window = { swap = function(opts) return { kind = "swap", dir = opts.direction } end },
+  },
+  timer = function(fn) fn() end,
+}
+o = {
+  rebind = function(key, _, action, opts)
+    rebinds[key] = { action = action, opts = opts or {} }
+  end,
+}
+dofile(path)
+-- Verify text deletion + cursor navigation coexist cleanly in one file.
+assert(rebinds["ALT + BACKSPACE"] and rebinds["SUPER + BACKSPACE"])
+assert(rebinds["ALT + LEFT"] and rebinds["ALT + RIGHT"] and rebinds["ALT + SHIFT + LEFT"] and rebinds["ALT + SHIFT + RIGHT"])
+is_term = false
+dispatched = {}
+rebinds["ALT + LEFT"].action()
+assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "Left")
+dispatched = {}
+rebinds["ALT + SHIFT + RIGHT"].action()
+assert(#dispatched == 2 and dispatched[1].mods == "CTRL SHIFT" and dispatched[1].key == "Right")
+is_term = true
+dispatched = {}
+rebinds["ALT + LEFT"].action()
+assert(#dispatched == 2 and dispatched[1].mods == "ALT" and dispatched[1].key == "Left")
+if mode == "option-only" then
+  assert(not rebinds["SUPER + LEFT"] and not rebinds["CTRL + ALT + LEFT"])
+else
+  assert(rebinds["CTRL + ALT + LEFT"].action.kind == "focus" and rebinds["CTRL + ALT + LEFT"].action.dir == "l")
+  assert(rebinds["CTRL + ALT + SHIFT + UP"].action.kind == "swap" and rebinds["CTRL + ALT + SHIFT + UP"].action.dir == "u")
+  is_term = false
+  dispatched = {}
+  rebinds["SUPER + LEFT"].action()
+  assert(#dispatched == 2 and dispatched[1].mods == "" and dispatched[1].key == "Home")
+  dispatched = {}
+  rebinds["SUPER + UP"].action()
+  assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "Home")
+  dispatched = {}
+  rebinds["SUPER + SHIFT + DOWN"].action()
+  assert(#dispatched == 2 and dispatched[1].mods == "CTRL SHIFT" and dispatched[1].key == "End")
+  is_term = true
+  dispatched = {}
+  rebinds["SUPER + LEFT"].action()
+  assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "A")
+  dispatched = {}
+  rebinds["SUPER + RIGHT"].action()
+  assert(#dispatched == 2 and dispatched[1].mods == "CTRL" and dispatched[1].key == "E")
+end
+LUA
+    fi
+  fi
+  before=$(snapshot)
+  bash "$scripts/setup.sh" --keep-trackpad --screenshot-hotkey keep --clipboard-hotkey keep \
+    --text-deletion macos-alt --cursor-navigation "$nav_mode" > "$root/output"
+  [[ $(snapshot) == "$before" ]] || { printf 'Cursor navigation rerun is not idempotent\n' >&2; exit 1; }
+done
+
 # Exercise real TTY prompts without touching the running desktop.
 if command -v script >/dev/null 2>&1; then
   before=$(snapshot)
-  printf 'natural\nboth\nsuper-shift-z\nn\n' | script -qec "bash '$scripts/setup.sh'" /dev/null > "$root/tty-decline"
+  printf 'natural\nboth\nsuper-shift-z\nmacos-alt\nmacos-full\nn\n' | script -qec "bash '$scripts/setup.sh'" /dev/null > "$root/tty-decline"
   [[ $(snapshot) == "$before" ]]
-  printf 'traditional\nboth\nsuper-shift-z\ny\n' | script -qec "bash '$scripts/setup.sh'" /dev/null > "$root/tty-accept"
+  printf 'traditional\nboth\nsuper-shift-z\nmacos-alt\nmacos-full\ny\n' | script -qec "bash '$scripts/setup.sh'" /dev/null > "$root/tty-accept"
   grep -q 'natural_scroll = false' "$hypr/macbook_behavior.lua"
   grep -q 'SUPER + CTRL + A' "$hypr/macbook_behavior.lua"
   grep -q 'SUPER + SHIFT + Z' "$hypr/macbook_behavior.lua"
+  grep -q 'Delete previous word' "$hypr/macbook_behavior.lua"
+  grep -q 'Move cursor to start of line' "$hypr/macbook_behavior.lua"
 fi
 
 [[ ! -e $MOCK_LOG ]] || { printf 'Unexpected command invocation\n' >&2; exit 1; }

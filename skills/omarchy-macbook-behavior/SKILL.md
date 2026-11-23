@@ -29,7 +29,9 @@ Before applying any change, inspect the actual configuration and ask for the use
 2. Choose **natural**, **traditional**, or **keep trackpad**. Natural scrolling moves content with the fingers; traditional reverses that direction. Selecting either direction opts into three-finger drag, disable-while-typing, and the replacement gesture scheme described below. Existing acceleration, tap/click choices and terminal scroll factors remain unchanged.
 3. Choose screenshot **keep**, **Super+Ctrl+A**, **Alt+Shift+4**, or **both**. Super+Ctrl+A replaces Audio by default; any chosen chord can replace a personal binding. Alt+Shift+4 is an alternative chord, not the physical equivalent of macOS Cmd+Shift+4.
 4. Choose clipboard **keep** or add **Super+Shift+Z**. This is an optional alias, not a universal Alfred default; check personal conflicts. The native Super+Ctrl+V binding is not removed.
-5. Discuss language and power changes separately if requested. Setup does not install packages or alter Fcitx, Rime, system services, udev, logind or shell timers.
+5. Choose text deletion **keep**, `macos-alt` (recommended), or `macos-ctrl-w`: maps `Option+Delete` (`ALT + BACKSPACE`, with key repeat) to word delete (GUI: `CTRL + BackSpace`; terminals: `ALT + BackSpace` or `CTRL + W`), maps `Super+Delete` (`SUPER + BACKSPACE`) to delete-to-line-start (GUI: `SHIFT + Home` → `BackSpace`; terminals: `CTRL + U`), and relocates stock `SUPER + BACKSPACE` (Toggle transparency on a window) to `SUPER + ALT + BACKSPACE`.
+6. Choose cursor navigation **keep**, `option-only`, or `macos-full`: `option-only` enables conflict-free `Option+Left/Right` (+ `Shift`) word navigation/selection; `macos-full` also maps `Super+Arrows` (+ `Shift`) to line/document navigation and selection, relocating stock Hyprland window focus/swap to `CTRL + ALT + Arrows` / `CTRL + ALT + SHIFT + Arrows`.
+7. Discuss language and power changes separately if requested. Setup does not install packages or alter Fcitx, Rime, system services, udev, logind or shell timers.
 
 ## Quick Start
 
@@ -42,9 +44,11 @@ bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
 # Interactive: every missing preference requires a choice, then confirmation.
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 
-# Explicit automation: ALL three preference categories are mandatory.
+# Explicit automation: trackpad, screenshot, and clipboard are mandatory;
+# --text-deletion and --cursor-navigation are optional (default to keep when omitted noninteractively).
 bash skills/omarchy-macbook-behavior/scripts/setup.sh \
-  --natural-scroll --screenshot-hotkey alt-shift-4 --clipboard-hotkey super-shift-z
+  --natural-scroll --screenshot-hotkey alt-shift-4 --clipboard-hotkey super-shift-z \
+  --text-deletion macos-alt --cursor-navigation macos-full
 
 # Keep trackpad and screenshot behavior; add only a clipboard alias:
 bash skills/omarchy-macbook-behavior/scripts/setup.sh \
@@ -55,7 +59,7 @@ bash skills/omarchy-macbook-behavior/scripts/setup.sh \
   --keep-trackpad --screenshot-hotkey super-ctrl-a --clipboard-hotkey super-shift-z
 ```
 
-Trackpad flags: `--natural-scroll`, `--traditional-scroll`, `--keep-trackpad`. Screenshot values: `keep`, `super-ctrl-a`, `alt-shift-4`, `both`. Clipboard values: `keep`, `super-shift-z`. Unknown arguments, missing values, invalid choices and incomplete noninteractive invocations fail before writes. Explicit complete flags constitute consent; an agent must still obtain the user's preferences first.
+Trackpad flags: `--natural-scroll`, `--traditional-scroll`, `--keep-trackpad`. Screenshot values: `keep`, `super-ctrl-a`, `alt-shift-4`, `both`. Clipboard values: `keep`, `super-shift-z`. Text deletion values (`--text-deletion`): `keep`, `macos-alt`, `macos-ctrl-w`. Cursor navigation values (`--cursor-navigation`): `keep`, `option-only`, `macos-full`. Both text-editing options default to `keep` when omitted noninteractively and are prompted in interactive TTY sessions. Unknown arguments, missing values, invalid choices and incomplete noninteractive invocations fail before writes. Explicit complete flags constitute consent; an agent must still obtain the user's preferences first.
 
 ### Screenshot Command Detection
 
@@ -121,6 +125,28 @@ The supplied replacement scheme is:
 Scratchpad is a special workspace, not macOS Mission Control. Hardware support and drag feel require real-device testing. `disable_while_typing = true` requests libinput behavior; it cannot guarantee palm rejection on every device. Keep upstream acceleration and scroll factors unless the user separately requests tuning; optional tap/click, speed and wake settings can be customized in personal input configuration after confirmation.
 
 For shortcut-only manual changes, choose examples from [hyprland-bindings.lua](references/hyprland-bindings.lua), unbind the selected chord, then bind through `o.bind`. Select **`omarchy-capture-screenshot` or bare `omasnap`** using the detection above; do not assume a same-named wrapper invokes the same tool on every release. Leave native Print/Super+Ctrl+Alt+C alone unless explicitly asked. No extra overlay rule is needed; never add `no_screen_share` for `omasnap`.
+
+### Optional: macOS-Style Text Deletion (`Option + Delete` / `Super + Delete`)
+
+See [hyprland-text-deletion.lua](references/hyprland-text-deletion.lua) (or pass `--text-deletion macos-alt` / `macos-ctrl-w` to `setup.sh`). It reuses Omarchy 4.5's `hl.dsp.send_key_state` and `terminal` window-tag pattern from `default/hypr/bindings/clipboard.lua` without installing `keyd` or any system service:
+
+| Shortcut | Hyprland Binding | GUI Apps | Terminal Windows | Conflict Handling |
+| --- | --- | --- | --- | --- |
+| `Option + Delete` | `ALT + BACKSPACE` (`repeating = true`) | `CTRL + BackSpace` | `ALT + BackSpace` (`macos-alt`, punctuation-aware) or `CTRL + W` (`macos-ctrl-w`) | None |
+| `Super + Delete` | `SUPER + BACKSPACE` | `SHIFT + Home` → `BackSpace` | `CTRL + U` | Relocates stock "Toggle transparency on a window" to `SUPER + ALT + BACKSPACE` |
+
+Known edge cases: in GUI apps, pressing `Super + Delete` when the cursor is already at column 0 sends an empty selection + `BackSpace`, merging the line with the previous line (`Ctrl + U` in terminals does not); code editors with smart `Home` delete to the indentation start on the first press; behavior during uncommitted IME preedit depends on the app's input widget.
+
+### Optional: macOS-Style Cursor Navigation & Selection (`Option / Super + Arrows`)
+
+See [hyprland-cursor-navigation.lua](references/hyprland-cursor-navigation.lua) (or pass `--cursor-navigation option-only` / `macos-full` to `setup.sh`), reusing the same `send_key_state` + terminal-tag pattern:
+
+| Shortcut | Mode | GUI Apps | Terminal Windows | Conflict Handling |
+| --- | --- | --- | --- | --- |
+| `Option + Left/Right` (+ `Shift`) | `option-only` / `macos-full` | `CTRL (+ SHIFT) + Left/Right` | `ALT (+ SHIFT) + Left/Right` | No WM conflict (replaces browser `Alt+Left/Right` history navigation with word navigation) |
+| `Super + Left/Right` | `macos-full` | `Home / End` | `CTRL + A / CTRL + E` | Relocates stock Hyprland window focus to `CTRL + ALT + Arrows` |
+| `Super + Shift + Left/Right` | `macos-full` | `SHIFT + Home / End` | `SHIFT + Home / End` | Relocates stock Hyprland window swap to `CTRL + ALT + SHIFT + Arrows` |
+| `Super + Up/Down` (+ `Shift`) | `macos-full` | `CTRL (+ SHIFT) + Home / End` | `CTRL (+ SHIFT) + Home / End` | Same as above; leaves `Option + Up/Down` untouched for editor line-move shortcuts |
 
 ## Optional Input Methods
 

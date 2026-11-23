@@ -29,6 +29,7 @@ npx skills add interjc/omarchy-skills
 # Or install specific skills directly
 npx skills add interjc/omarchy-skills --skill omarchy-agent-agy
 npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
+npx skills add interjc/omarchy-skills --skill omarchy-browser-use
 ```
 
 ---
@@ -39,6 +40,7 @@ npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
 | :--- | :--- | :--- |
 | [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL.md) | Select native `agy` or approved legacy compatibility by detected capabilities, with an optional usage bar. | Packaged script regression test on `4.5.0-3` and historical live tests on `4.0.6-1` |
 | [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL.md) | Add confirmed Lua trackpad and shortcut overrides, with manual input method, power, and hardware diagnostics. | Configuration audit and sandbox tests on `4.5.0-3`, with historical live tests on `4.0.6-1` |
+| [`omarchy-browser-use`](./skills/omarchy-browser-use/SKILL.md) | Connect AI agents to your real local Chrome browser via `opencode browse` and its Chrome extension over both MCP and CLI. | Live pairing and navigation test on `4.5.0-3` (`browse 0.1.5`) + offline regression tests |
 
 ---
 
@@ -83,7 +85,7 @@ bash skills/omarchy-agent-agy/scripts/setup.sh
 #### Highlights
 - **Preferences First**: Choose natural scrolling, traditional scrolling, or keep trackpad behavior, then choose screenshot and clipboard shortcuts separately. Terminals prompt for confirmation; noninteractive runs require every choice explicitly.
 - **Managed Lua Overrides**. Choosing a scroll direction also enables three-finger drag, disable-while-typing, and replacement four-finger gestures. Setup sets the disable flag only when the installed defaults read it, backs up changes, manages a separate module and marked blocks, and preserves personal `input.lua`/`bindings.lua`.
-- **Audit Shortcuts First**: The read-only script separates live bindings from the upstream snapshot. Snapshot screenshot defaults are `Print` / `SUPER + CTRL + ALT + C` (not F12), and clipboard history is `SUPER + CTRL + V`. Optional `SUPER + CTRL + A` screenshots replace Audio, `ALT + SHIFT + 4` is an alternative chord, and `SUPER + SHIFT + Z` is only an optional clipboard alias. Inspect the actual wrapper on PATH: use `omarchy-capture-screenshot` only when it invokes Omasnap; otherwise retain installed `omasnap` on older systems.
+- **Audit Shortcuts First**: The read-only script separates live bindings from the upstream snapshot. Snapshot screenshot defaults are `Print` / `SUPER + CTRL + ALT + C` (not F12), and clipboard history is `SUPER + CTRL + V`. Optional `SUPER + CTRL + A` screenshots replace Audio, `ALT + SHIFT + 4` is an alternative chord, and `SUPER + SHIFT + Z` is only an optional clipboard alias. Optional `--text-deletion macos-alt|macos-ctrl-w` and `--cursor-navigation option-only|macos-full` add macOS-style word/line deletion and arrow navigation/selection (splitting terminals vs. GUI apps and relocating window transparency and window focus/swap to conflict-free chords). Inspect the actual wrapper on PATH: use `omarchy-capture-screenshot` only when it invokes Omasnap; otherwise retain installed `omasnap` on older systems.
 - **Separate IME Choices**: The snapshot natively uses `SUPER + I` / `SUPER + SHIFT + I` to cycle input languages, `SUPER + SPACE` for the menu, and `CTRL + SPACE` as a non-consuming terminal-prefix helper. Prefer the native configurator for Mozc; merge Rime/Rime-Ice manually if requested. Cycling groups does not cycle engines within a group.
 - **Not an All-in-One Installer**: No package installation, system-directory writes, or Fcitx/Rime, power, udev, logind, or idle-timer configuration. Inspect native lid/clamshell behavior first; optional manual steps require separate diagnosis and approval. Earlier skill changes are not undone automatically.
 
@@ -93,6 +95,26 @@ bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
 
 # Configure only confirmed trackpad and shortcut preferences
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
+```
+
+---
+
+### 3. `omarchy-browser-use`: Real Local Chrome Automation for Development
+
+> **Goal**: Connect AI agents to your real Chrome-family browser on Omarchy via `opencode browse` and its Chrome extension (preserving real sign-ins, cookies, and local dev server context) over both MCP and CLI.
+
+#### Highlights
+- **User-Space & Non-Destructive**: Installs only `~/.local/bin/browse` and user state directories; never modifies `/usr/share/omarchy/` or `/etc/`, with clean `browse uninstall` rollback.
+- **Dual MCP + CLI Access**: Restart running agents (Antigravity, OpenCode, Claude Code, Codex, etc.) to load the MCP server; use the CLI (`browse navigate / snapshot / console / network / screenshot`) immediately without waiting for a restart.
+- **Confirmation-First & Idempotent Helper**: Supports read-only `--status` inspection, explicit target agent selection (`all`, `none`, `keep`, or comma-separated list), and interactive or flagged pairing.
+- **Clear Safety Guardrails**: Documents `--keepVisible --keepOpen` for local dev tabs, `--allowedOrigins` / `--readOnly` boundaries, `handoff` for login/2FA/CAPTCHA, and sandbox loopback notes.
+
+```bash
+# Read-only check of browse binary, local relay, and Chrome extension pairing
+bash skills/omarchy-browser-use/scripts/setup.sh --status
+
+# Interactive wizard to confirm installation, agent scope, and Chrome pairing
+bash skills/omarchy-browser-use/scripts/setup.sh
 ```
 
 These paths assume the repository root. After installing through the skills CLI, run `scripts/setup.sh` from the actual installed skill directory. See each `SKILL.md` for full options, manual steps, verification, and rollback.

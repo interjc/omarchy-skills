@@ -29,7 +29,9 @@ npx skills add interjc/omarchy-skills --skill omarchy-macbook-behavior
 2. 选择**自然滚动**、**传统滚动**或**保留触控板设置**。自然滚动让内容随手指移动；传统滚动的方向相反。选择任一滚动方向，也就表示启用三指拖拽、打字时禁用触控板，以及下文所述的替代手势方案。现有加速度、轻触/点击选项和终端滚动系数保持不变。
 3. 为截图选择**保留**、**Super+Ctrl+A**、**Alt+Shift+4** 或**两者都用**。Super+Ctrl+A 默认会替换音频功能绑定；任何选中的组合键都可能替换个人绑定。Alt+Shift+4 只是一个替代组合键，并不对应 macOS Cmd+Shift+4 的相同物理键位。
 4. 为剪贴板选择**保留**或添加 **Super+Shift+Z**。这只是可选的快捷键别名，不是 Alfred 通用的默认快捷键；请检查个人配置中的冲突。原生 Super+Ctrl+V 绑定不会被移除。
-5. 如用户有需要，另行讨论语言和电源更改。安装脚本不会安装软件包，也不会修改 Fcitx、Rime、系统服务、udev、logind 或 shell 定时器。
+5. 为文字删除选择**保留**、`macos-alt`（推荐）或 `macos-ctrl-w`：将 `Option+Delete`（`ALT + BACKSPACE`，支持长按连删）映射为删词（GUI 转发 `CTRL + BackSpace`，终端保留 `ALT + BackSpace` 或改用 `CTRL + W`），将 `Super+Delete`（`SUPER + BACKSPACE`）映射为删到行首（GUI 顺序转发 `SHIFT + Home` → `BackSpace`，终端转发 `CTRL + U`），同时将原生 `SUPER + BACKSPACE`（切换窗口透明度）迁移至 `SUPER + ALT + BACKSPACE`。
+6. 为方向键光标导航选择**保留**、`option-only` 或 `macos-full`：`option-only` 仅启用无冲突的 `Option+←/→`（及加 `Shift`）按词移动/选中；`macos-full` 进一步将 `Super+方向键`（及加 `Shift`）映射为行首/行尾/文首/文尾移动与选中，并将原生 Hyprland 窗口焦点/交换迁至 `CTRL + ALT + 方向键` / `CTRL + ALT + SHIFT + 方向键`。
+7. 如用户有需要，另行讨论语言和电源更改。安装脚本不会安装软件包，也不会修改 Fcitx、Rime、系统服务、udev、logind 或 shell 定时器。
 
 ## 快速开始
 
@@ -42,9 +44,11 @@ bash skills/omarchy-macbook-behavior/scripts/recommend-shortcuts.sh
 # Interactive: every missing preference requires a choice, then confirmation.
 bash skills/omarchy-macbook-behavior/scripts/setup.sh
 
-# Explicit automation: ALL three preference categories are mandatory.
+# Explicit automation: trackpad, screenshot, and clipboard are mandatory;
+# --text-deletion and --cursor-navigation are optional (default to keep when omitted noninteractively).
 bash skills/omarchy-macbook-behavior/scripts/setup.sh \
-  --natural-scroll --screenshot-hotkey alt-shift-4 --clipboard-hotkey super-shift-z
+  --natural-scroll --screenshot-hotkey alt-shift-4 --clipboard-hotkey super-shift-z \
+  --text-deletion macos-alt --cursor-navigation macos-full
 
 # Keep trackpad and screenshot behavior; add only a clipboard alias:
 bash skills/omarchy-macbook-behavior/scripts/setup.sh \
@@ -55,7 +59,7 @@ bash skills/omarchy-macbook-behavior/scripts/setup.sh \
   --keep-trackpad --screenshot-hotkey super-ctrl-a --clipboard-hotkey super-shift-z
 ```
 
-触控板参数：`--natural-scroll`、`--traditional-scroll`、`--keep-trackpad`。截图选项值：`keep`、`super-ctrl-a`、`alt-shift-4`、`both`。剪贴板选项值：`keep`、`super-shift-z`。未知参数、缺失值、无效选项以及不完整的非交互调用都会在写入前失败。明确且完整的参数表示同意执行；代理仍须先取得用户的偏好选择。
+触控板参数：`--natural-scroll`、`--traditional-scroll`、`--keep-trackpad`。截图选项值：`keep`、`super-ctrl-a`、`alt-shift-4`、`both`。剪贴板选项值：`keep`、`super-shift-z`。文字删除选项值（`--text-deletion`）：`keep`、`macos-alt`、`macos-ctrl-w`。方向键光标导航选项值（`--cursor-navigation`）：`keep`、`option-only`、`macos-full`。后两项在非交互省略时默认为 `keep`，TTY 交互模式会逐项询问。未知参数、缺失值、无效选项以及不完整的非交互调用都会在写入前失败。明确且完整的参数表示同意执行；代理仍须先取得用户的偏好选择。
 
 ### 截图命令检测
 
@@ -121,6 +125,28 @@ hyprctl binds -j
 Scratchpad 是特殊工作区，不是 macOS 的 Mission Control。硬件支持情况和拖拽手感需要在真实设备上测试。`disable_while_typing = true` 请求启用 libinput 对应行为；它无法保证在所有设备上都能防止手掌误触。除非用户另行要求调节，否则保留上游加速度和滚动系数；经确认后，可在个人输入配置中自定义可选的轻触/点击、速度和唤醒设置。
 
 如果只手动更改快捷键，请从 [hyprland-bindings.lua](references/hyprland-bindings.lua) 选择示例，先解除所选组合键的绑定，再通过 `o.bind` 绑定。按上述检测选择 **`omarchy-capture-screenshot` 或裸命令 `omasnap`**，不要假定同名封装在所有版本都调用相同工具。除非明确要求，否则不要更改原生 Print/Super+Ctrl+Alt+C。不需要额外的覆盖层规则；绝不要为 `omasnap` 添加 `no_screen_share`。
+
+### 可选：macOS 风格文字删除（`Option + Delete` / `Super + Delete`）
+
+参考 [hyprland-text-deletion.lua](references/hyprland-text-deletion.lua)（或向 `setup.sh` 传入 `--text-deletion macos-alt` / `macos-ctrl-w`），复用 Omarchy 4.5 在 `default/hypr/bindings/clipboard.lua` 中使用的 `hl.dsp.send_key_state` 与 `terminal` 窗口标签检测机制，无需安装 `keyd` 或系统服务：
+
+| 按键 | Hyprland 键位 | GUI 应用 | 终端窗口 | 冲突处理 |
+| --- | --- | --- | --- | --- |
+| `Option + Delete` | `ALT + BACKSPACE`（`repeating = true`） | `CTRL + BackSpace` | `ALT + BackSpace`（`macos-alt`，按标点停）或 `CTRL + W`（`macos-ctrl-w`） | 无冲突 |
+| `Super + Delete` | `SUPER + BACKSPACE` | `SHIFT + Home` → `BackSpace` | `CTRL + U` | 将原生“切换窗口透明度”迁至 `SUPER + ALT + BACKSPACE` |
+
+已知边缘差异：在 GUI 中若光标已位于行首第 0 列，按 `Super + Delete` 会发送空选区 + `BackSpace` 导致与上一行合并（终端中的 `Ctrl + U` 无此问题）；代码编辑器的智能 `Home` 首次会删至缩进起点；输入法候选未上屏时行为取决于应用输入框实现。
+
+### 可选：macOS 风格方向键导航与选中（`Option / Super + 方向键`）
+
+参考 [hyprland-cursor-navigation.lua](references/hyprland-cursor-navigation.lua)（或向 `setup.sh` 传入 `--cursor-navigation option-only` / `macos-full`），与文字删除复用相同的 `send_key_state` + 终端标签检测机制：
+
+| 按键 | 模式 | GUI 应用 | 终端窗口 | 冲突处理 |
+| --- | --- | --- | --- | --- |
+| `Option + ← / →`（+ `Shift`） | `option-only` / `macos-full` | `CTRL (+ SHIFT) + Left/Right` | `ALT (+ SHIFT) + Left/Right` | 无系统冲突（浏览器原 `Alt+←/→` 前进后退将改为按词移动） |
+| `Super + ← / →` | `macos-full` | `Home / End` | `CTRL + A / CTRL + E` | 原 Hyprland 窗口焦点迁至 `CTRL + ALT + 方向键` |
+| `Super + Shift + ← / →` | `macos-full` | `SHIFT + Home / End` | `SHIFT + Home / End` | 原 Hyprland 窗口交换迁至 `CTRL + ALT + SHIFT + 方向键` |
+| `Super + ↑ / ↓`（+ `Shift`） | `macos-full` | `CTRL (+ SHIFT) + Home / End` | `CTRL (+ SHIFT) + Home / End` | 同上；`Option + ↑ / ↓` 不劫持以保留编辑器移动行快捷键 |
 
 ## 可选输入法
 
