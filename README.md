@@ -99,6 +99,36 @@ These paths assume the repository root. After installing through the skills CLI,
 
 ---
 
+## 🧩 Recommended Plugins & Setup
+
+The recommendations below are curated from an `omarchy 4.5.0-3` + MacBook daily setup (covering only actively enabled, day-to-day components).
+
+### 1. Third-Party Bar Plugins (Omarchy Shell)
+
+| Plugin | Replaces / Enhances | Highlights | Repository |
+| :--- | :--- | :--- | :--- |
+| **Spaces** (`tornikegomareli.spaces`) | Replaces stock `omarchy.workspaces` | Shows open app icons directly in each workspace on the top bar; hovering another workspace opens a live window layout preview with click-to-jump thumbnails | [tornikegomareli/omarchy-spaces](https://github.com/tornikegomareli/omarchy-spaces) |
+| **Omaplug** (`omaplug`) | Adds GUI management for third-party plugins | Enable/disable, check for updates on a schedule, batch-update, install from git, or remove third-party plugins directly from the top bar and Omarchy menu (`apps.omaplug`), with Marketplace access | [fross100/omaplug](https://github.com/fross100/omaplug) |
+| **AI Usage** (`akitaonrails.ai-usagebar` + `ai-usagebar-bin`) | Multi-provider AI quota bar monitor | Tracks subscription usage, balances, and reset countdowns across Antigravity, OpenAI, Claude, and other providers in one panel (see [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL.md)) | [akitaonrails/ai-usagebar](https://github.com/akitaonrails/ai-usagebar) |
+
+### 2. Practical Standalone Tools & Services
+
+| Tool / Service | Purpose | Recommended Usage & Notes | Project |
+| :--- | :--- | :--- | :--- |
+| **HyprCaffeine** | Idle, lock, and lid-close inhibition for Hyprland / Wayland | Restores inhibitor state on session start via `hyprcaffeine.service` and binds hotkeys to toggle idle, monitor keep-awake, and lid inhibit | [hbuddenberg/hyprcaffeine](https://github.com/hbuddenberg/hyprcaffeine) |
+| **Voxtype** | Offline push-to-talk speech-to-text daemon | Set output mode to `clipboard` (paste from system clipboard) to avoid synthetic keystrokes interfering with terminals or input methods | [voxtype.io](https://voxtype.io) |
+| **Fcitx5 + Rime (Rime-Ice) + Mozc** | Multilingual CJK / English input stack | Pairs with stock `omarchy-fcitx5.service` and one-way `SUPER + I` cycling (see [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL.md)) | [iDvel/rime-ice](https://github.com/iDvel/rime-ice) |
+
+### 3. Stock Widgets & Configuration Tweaks Worth Enabling
+
+- **Built-in Bar Widgets & Transparent Bar** (`~/.config/omarchy/shell.json`): Enable `omarchy.elsewhen` (multi-timezone world clock), `omarchy.weather`, `omarchy.monitor` (quick display control), and `bar.transparent: true` as needed.
+- **MacBook Trackpad Anti-Accidental-Touch & Selection**: Keep `~/.config/hypr/input.lua` minimal so Omarchy 4.5's stock scroll and terminal/TUI rules stay active; setting `tap_to_click = false` and `tap_and_drag = false` with stock `clickfinger_behavior = true` (physical press clicking) and 3-finger horizontal workspace swipes prevents palm clicks and accidental large text selections. On older USB MacBooks (`bcm5974`) misclassified by `udev` as `ID_INPUT_TOUCHPAD_INTEGRATION=external`, add a targeted `/etc/udev/hwdb.d/71-touchpad-local.hwdb` match for the device's `vid`/`pid` as `internal` to restore libinput disable-while-typing (DWT) and edge palm rejection.
+- **Retina HiDPI Scaling & Zero-Latency Screenshots**: Set `scale = 2` and `GDK_SCALE = 2` in `~/.config/hypr/monitors.lua`; add a `^omasnap$` layer rule with `no_anim = true` and `animation = "none"` in `~/.config/hypr/bindings.lua` to eliminate capture overlay animation delay (never add `no_screen_share` for `omasnap`, which breaks scrolling capture).
+
+> ⚠️ **Safety & Config Notes**: Third-party plugins and AUR packages execute unsandboxed code—review their source or package definitions before installing. `~/.config/omarchy/shell.json` is a complete configuration file rather than a partial deep-merge override, so always back it up and edit it in place.
+
+---
+
 ## 🗺️ Roadmap & Future Skills
 
 - [ ] **Omarchy Waybar & Quickshell Toolkit**: Custom widgets for AI agent metrics, GPU stats, and workspace indicators.

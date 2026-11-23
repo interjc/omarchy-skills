@@ -99,6 +99,36 @@ bash skills/omarchy-macbook-behavior/scripts/setup.sh
 
 ---
 
+## 🧩 实用插件与配置推荐
+
+以下推荐基于 `omarchy 4.5.0-3` + MacBook 日常主力工作流整理（仅收录实际启用并长期使用的组件）。
+
+### 1. 第三方状态栏插件（Omarchy Shell）
+
+| 插件 | 替代 / 增强什么 | 实用亮点 | 项目地址 |
+| :--- | :--- | :--- | :--- |
+| **Spaces** (`tornikegomareli.spaces`) | 替代原生 `omarchy.workspaces` | 在顶栏直观显示各工作区已打开的应用图标；悬停其他工作区可实时预览窗口布局，点击缩略图直接跳转 | [tornikegomareli/omarchy-spaces](https://github.com/tornikegomareli/omarchy-spaces) |
+| **Omaplug** (`omaplug`) | 补齐第三方插件图形化管理 | 在顶栏与菜单（`apps.omaplug`）直接启停、定时检查并批量更新、从 Git 安装或移除第三方插件，并直达 Omarchy Marketplace | [fross100/omaplug](https://github.com/fross100/omaplug) |
+| **AI Usage** (`akitaonrails.ai-usagebar` + `ai-usagebar-bin`) | 顶栏多模型 AI 额度监控 | 聚合查看 Antigravity、OpenAI、Claude 等多家 AI 订阅额度、余额与重置倒计时（接入方式见 [`omarchy-agent-agy`](./skills/omarchy-agent-agy/SKILL_ZH.md)） | [akitaonrails/ai-usagebar](https://github.com/akitaonrails/ai-usagebar) |
+
+### 2. 实用独立工具与服务
+
+| 工具 / 服务 | 作用 | 推荐用法与注意事项 | 项目地址 |
+| :--- | :--- | :--- | :--- |
+| **HyprCaffeine** | Hyprland / Wayland 防休眠、防锁屏与合盖保持唤醒 | 通过 `hyprcaffeine.service` 在会话启动时恢复抑制状态，并绑定快捷键一键切换空闲、显示器唤醒与合盖抑制 | [hbuddenberg/hyprcaffeine](https://github.com/hbuddenberg/hyprcaffeine) |
+| **Voxtype** | 离线按住说话语音转文字（Push-to-Talk） | 建议输出模式设为 `clipboard`（配合系统剪贴板粘贴），避免直接模拟按键干扰终端或输入法上下文 | [voxtype.io](https://voxtype.io) |
+| **Fcitx5 + Rime（雾凇拼音）+ Mozc** | 中 / 日 / 英多语言输入栈 | 搭配原生 `omarchy-fcitx5.service` 与单向 `SUPER + I` 轮换（详见 [`omarchy-macbook-behavior`](./skills/omarchy-macbook-behavior/SKILL_ZH.md)） | [iDvel/rime-ice](https://github.com/iDvel/rime-ice) |
+
+### 3. 值得开启的官方组件与细节配置
+
+- **顶栏内置小组件与透明栏**（`~/.config/omarchy/shell.json`）：按需启用 `omarchy.elsewhen`（多时区世界时钟）、`omarchy.weather`（天气）、`omarchy.monitor`（显示器快捷控制）以及 `bar.transparent: true`。
+- **MacBook 触控板防误触与防误选**：在 `~/.config/hypr/input.lua` 中仅保留精简覆盖（沿用 Omarchy 4.5 官方默认滚动与终端/TUI 滚动规则），推荐设置 `tap_to_click = false` 与 `tap_and_drag = false`，配合原生 `clickfinger_behavior = true`（物理按压点击）与 3 指水平切工作区，从根源减少掌缘误点和大片误选文字；若老款 USB MacBook（`bcm5974`）被 `udev` 误判为 `ID_INPUT_TOUCHPAD_INTEGRATION=external`，可通过 `/etc/udev/hwdb.d/71-touchpad-local.hwdb` 精确匹配设备的 `vid`/`pid` 标为 `internal`，以恢复 libinput 打字禁用（DWT）与边缘防误触。
+- **Retina HiDPI 缩放与零延迟截图**：在 `~/.config/hypr/monitors.lua` 配置 `scale = 2` 与 `GDK_SCALE = 2`；在 `~/.config/hypr/bindings.lua` 为 `^omasnap$` 添加 `no_anim = true` / `animation = "none"` 图层规则以消除截图遮罩动画延迟（切勿为 `omasnap` 添加 `no_screen_share`，否则会破坏滚动截图）。
+
+> ⚠️ **安全与配置提醒**：第三方插件与 AUR 软件包会在会话中执行非沙箱代码，安装前请先审阅其源码或包定义；`~/.config/omarchy/shell.json` 为完整配置文件而非局部深合并覆盖，修改前请务必备份并就地编辑。
+
+---
+
 ## 🗺️ 后续路线图 (Roadmap)
 
 - [ ] **Omarchy Waybar & Quickshell 专属小部件**：AI Agent 状态、GPU 占用与工作区增强组件。
