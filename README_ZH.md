@@ -122,7 +122,7 @@ bash skills/omarchy-macbook-behavior/scripts/setup.sh
 ### 3. 值得开启的官方组件与细节配置
 
 - **顶栏内置小组件与透明栏**（`~/.config/omarchy/shell.json`）：按需启用 `omarchy.elsewhen`（多时区世界时钟）、`omarchy.weather`（天气）、`omarchy.monitor`（显示器快捷控制）以及 `bar.transparent: true`。
-- **MacBook 触控板防误触与防误选**：在 `~/.config/hypr/input.lua` 中仅保留精简覆盖（沿用 Omarchy 4.5 官方默认滚动与终端/TUI 滚动规则），推荐设置 `tap_to_click = false` 与 `tap_and_drag = false`，配合原生 `clickfinger_behavior = true`（物理按压点击）与 3 指水平切工作区，从根源减少掌缘误点和大片误选文字；若老款 USB MacBook（`bcm5974`）被 `udev` 误判为 `ID_INPUT_TOUCHPAD_INTEGRATION=external`，可通过 `/etc/udev/hwdb.d/71-touchpad-local.hwdb` 精确匹配设备的 `vid`/`pid` 标为 `internal`，以恢复 libinput 打字禁用（DWT）与边缘防误触。
+- **MacBook 触控板防误触与防误选**：在 `~/.config/hypr/input.lua` 中仅保留精简覆盖（沿用 Omarchy 4.5 官方默认滚动与终端/TUI 滚动规则），推荐保留轻触点击（`tap_to_click = true`）同时关闭轻触拖拽（`tap_and_drag = false`），配合原生 `clickfinger_behavior = true` 与 3 指水平切工作区，兼顾日常轻点便利与防误选文字（选中或拖拽需物理按下；若仍偶发掌缘误点可进一步将 `tap_to_click` 设为 `false`）；若老款 USB MacBook（`bcm5974`）被 `udev` 误判为 `ID_INPUT_TOUCHPAD_INTEGRATION=external`，可通过 `/etc/udev/hwdb.d/71-touchpad-local.hwdb` 精确匹配设备的 `vid`/`pid` 标为 `internal`，以恢复 libinput 打字禁用（DWT）与边缘防误触。
 - **Retina HiDPI 缩放与零延迟截图**：在 `~/.config/hypr/monitors.lua` 配置 `scale = 2` 与 `GDK_SCALE = 2`；在 `~/.config/hypr/bindings.lua` 为 `^omasnap$` 添加 `no_anim = true` / `animation = "none"` 图层规则以消除截图遮罩动画延迟（切勿为 `omasnap` 添加 `no_screen_share`，否则会破坏滚动截图）。
 
 > ⚠️ **安全与配置提醒**：第三方插件与 AUR 软件包会在会话中执行非沙箱代码，安装前请先审阅其源码或包定义；`~/.config/omarchy/shell.json` 为完整配置文件而非局部深合并覆盖，修改前请务必备份并就地编辑。
