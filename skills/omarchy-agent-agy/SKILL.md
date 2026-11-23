@@ -147,11 +147,15 @@ omarchy pkg aur add ai-usagebar-bin
 omarchy plugin add https://github.com/akitaonrails/ai-usagebar.git --enable
 ```
 
-Back up and edit `~/.config/ai-usagebar/config.toml` in place, using
-[`references/ai-usagebar.toml`](references/ai-usagebar.toml). If `[antigravity]` exists, adjust
-`enabled = true` there instead of duplicating the table or replacing other providers.
-Do not change primary/UI preferences by default. Verify third-party fields and commands against
-the installed version's help and documentation.
+Back up `~/.config/ai-usagebar/config.toml`, then prefer the built-in CLI to enable approved
+providers in place (e.g. `ai-usagebar settings enable antigravity` or `anthropic`, which preserves
+comments, other providers, and primary/UI preferences without duplicating TOML tables); run
+`ai-usagebar vendors` to inspect local credential status without network calls. If the installed
+version lacks that subcommand, edit the file in place using
+[`references/ai-usagebar.toml`](references/ai-usagebar.toml): when a table already exists, adjust
+`enabled = true` there instead of duplicating the table, replacing other providers, or changing
+primary/UI preferences by default. Verify third-party fields and commands against the installed
+version's help and documentation.
 
 Read and back up the **complete** `~/.config/omarchy/shell.json`. Omarchy requires top-level
 `"version": 1`; the user file is a complete configuration, not a deep merge with system defaults.
@@ -179,7 +183,9 @@ systemctl --user is-active agy-daemon.service
 systemctl --user status agy-daemon.service
 journalctl --user -u agy-daemon.service -n 50 --no-pager
 ai-usagebar --help
+ai-usagebar vendors                 # Read-only list of provider state and local credentials
 ai-usagebar --vendor antigravity    # Confirm support in installed help first
+ai-usagebar usage                   # Verify output across all enabled providers
 ```
 
 Check the shortcut and menu separately. Inspect actual quota output or errors rather than assuming

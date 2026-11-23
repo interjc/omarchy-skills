@@ -136,10 +136,12 @@ omarchy pkg aur add ai-usagebar-bin
 omarchy plugin add https://github.com/akitaonrails/ai-usagebar.git --enable
 ```
 
-备份并就地编辑 `~/.config/ai-usagebar/config.toml`，参考
-[`references/ai-usagebar.toml`](references/ai-usagebar.toml)。若已有 `[antigravity]`，在其中调整
-`enabled = true`，不要重复表头或覆盖其他 provider，也不要默认改变 primary/UI 偏好。
-第三方版本的字段和命令以已安装版本的帮助及其文档为准。
+备份 `~/.config/ai-usagebar/config.toml` 后，优先使用内置命令按需启用已确认的 provider（如
+`ai-usagebar settings enable antigravity` 或 `anthropic`，会原地保留注释、其他 provider 及
+primary/UI 偏好，避免手改 TOML 写重表头）；可用 `ai-usagebar vendors` 只读查看本机已有凭据的
+provider。若当前版本不支持该子命令，再参考 [`references/ai-usagebar.toml`](references/ai-usagebar.toml)
+就地编辑，若已有对应表头则只调整 `enabled = true`，不要重复表头、覆盖其他 provider 或默认改变
+primary/UI 偏好。第三方版本的字段和命令以已安装版本的帮助及其文档为准。
 
 先读取并备份**完整** `~/.config/omarchy/shell.json`。Omarchy 要求顶层 `"version": 1`，
 用户文件是完整配置，不与系统默认值深合并。保留现有所有字段和布局，只在用户选定的区域
@@ -166,7 +168,9 @@ systemctl --user is-active agy-daemon.service
 systemctl --user status agy-daemon.service
 journalctl --user -u agy-daemon.service -n 50 --no-pager
 ai-usagebar --help
+ai-usagebar vendors                 # 只读列出各 provider 开关与本地凭据状态
 ai-usagebar --vendor antigravity    # 先以当前帮助确认参数支持
+ai-usagebar usage                   # 一次性验证所有已启用 provider 的输出
 ```
 
 通过快捷键和菜单分别确认默认项，查看实际用量或错误，不预设配额周期、输出数值或 RPC 方法。
